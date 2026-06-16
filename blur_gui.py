@@ -99,7 +99,7 @@ class BlurSwitchManager(QMainWindow):
         super().__init__()
         os.makedirs(CONFIG_DIR, exist_ok=True)
         self.script = self._get_script(); self.cfg = {}; self.inp = {}; self.wp = {}
-        self.auto = False; self.current = None; self.custom = []; self.stack = None; self.settings = {}; self._auto_proc = None; self._apply_proc = None; self._apply_timer = None; self._apply_killed = False; self._gen_proc = None; self._watch_timer = None
+        self.auto = False; self.current = None; self.custom = []; self.stack = None; self.settings = {}; self._auto_proc = None; self._apply_proc = None; self._gen_proc = None; self._watch_timer = None
         self.setWindowTitle("Stoned Theme Manager"); self.resize(800, 1080); self.setMinimumSize(800,700)
         self.setFont(QFont()); self._load(); self._detect_custom(); self._ui(); self._detect_scheduler(); self._timer_status(); self._detect_mode()
         self._watch_timer = QTimer(self)
@@ -747,44 +747,20 @@ class BlurSwitchManager(QMainWindow):
                 except TypeError:
                     pass
                 self._apply_proc.deleteLater()
-        if self._apply_timer is not None:
-            self._apply_timer.stop()
-        self._apply_killed = False
         self._apply_proc = QProcess(self)
         self._apply_proc.finished.connect(self._on_apply_done)
         self._apply_proc.errorOccurred.connect(self._on_apply_error)
-        self._apply_timer = QTimer(self)
-        self._apply_timer.setSingleShot(True)
-        self._apply_timer.timeout.connect(self._on_apply_timeout)
-        self._apply_timer.start(30000)
         self._apply_proc.start(self.script, [mode])
 
-    def _on_apply_timeout(self):
-        self._apply_killed = True
-        if self._apply_proc is not None and self._apply_proc.state() != QProcess.ProcessState.NotRunning:
-            self._apply_proc.terminate()
-            if not self._apply_proc.waitForFinished(3000):
-                self._apply_proc.kill()
-                self._apply_proc.waitForFinished(1000)
-        self._apply_proc = None
-        self._styled_msgbox(QMessageBox.Icon.Warning, "Timeout", "Apply script timed out and was killed.").exec()
-
     def _on_apply_done(self, exit_code, exit_status):
-        if self._apply_timer is not None:
-            self._apply_timer.stop()
         self._apply_proc = None
         self._color_btns()
-        if exit_code != 0 and not self._apply_killed:
+        if exit_code != 0:
             proc = self.sender()
             err = bytes(proc.readAllStandardError()).decode().strip() if proc else ""
             self._styled_msgbox(QMessageBox.Icon.Critical, "Error", f"Script error:\n{err}").exec()
-        self._apply_killed = False
-
     def _on_apply_error(self, error):
-        if self._apply_timer is not None:
-            self._apply_timer.stop()
         self._apply_proc = None
-        self._apply_killed = False
         proc = self.sender()
         err = proc.errorString() if proc else str(error)
         self._styled_msgbox(QMessageBox.Icon.Critical, "Error", f"Apply script failed:\n{err}").exec()
@@ -792,8 +768,6 @@ class BlurSwitchManager(QMainWindow):
     def closeEvent(self, event):
         if self._watch_timer is not None:
             self._watch_timer.stop()
-        if self._apply_timer is not None:
-            self._apply_timer.stop()
         for proc in [self._auto_proc, self._apply_proc, self._gen_proc]:
             if proc is not None and proc.state() != QProcess.ProcessState.NotRunning:
                 try:
