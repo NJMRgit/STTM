@@ -168,15 +168,15 @@ class BlurSwitchManager(QMainWindow):
         pc = colors["primary_container"]
         pr, pg, pb = int(pc[0:2],16), int(pc[2:4],16), int(pc[4:6],16)
         h, l, s = colorsys.rgb_to_hls(pr/255.0, pg/255.0, pb/255.0)
-        s = min(s * 1.5, 1.0)
-        l = min(l * 1.3, 1.0)
+        s = min(s * 2.5, 1.0)
+        l = min(l * (2.0 if l < 0.5 else 1.0), 0.75)
         br, bg, bb = [max(0, min(255, int(c * 255))) for c in colorsys.hls_to_rgb(h, l, s)]
         bpc = f"{br:02x}{bg:02x}{bb:02x}"
         self.inp[f"{mode}_TINT"].setText(hex_to_tint(bpc))
         self.inp[f"{mode}_SHADOW_COLOR"].setText(hex_to_rgb(bpc))
         self.inp[f"{mode}_OUTLINE_COLOR_ACTIVE"].setText(hex_to_rgb(bpc))
         si = s * 0.5
-        li = l * 0.5
+        li = l * 0.85
         ir, ig, ib = [max(0, min(255, int(c * 255))) for c in colorsys.hls_to_rgb(h, li, si)]
         self.inp[f"{mode}_SHADOW_COLOR_INACTIVE"].setText(f"{ir},{ig},{ib}")
         self.inp[f"{mode}_OUTLINE_COLOR_INACTIVE"].setText(f"{ir},{ig},{ib}")
