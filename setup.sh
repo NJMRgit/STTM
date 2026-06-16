@@ -66,6 +66,15 @@ if ! prompt_yn "Apply these changes?"; then
 fi
 echo
 
+# Ensure config files exist before writing to them
+for cfg in breezerc darklyrc; do
+    path="$HOME/.config/$cfg"
+    if [ ! -f "$path" ]; then
+        echo "  Creating $cfg..."
+        touch "$path"
+    fi
+done
+
 anim_apply=false
 do_anim=false
 group_open=false
@@ -358,6 +367,22 @@ name=cachyos-emerald
 
 [breezerc|Common]
 OutlineIntensity=OutlineOff
+
+[breezerc|Windeco Exception 0]
+BorderSize=0
+Enabled=true
+ExceptionPattern=.*
+ExceptionType=0
+HideTitleBar=false
+Mask=0
+
+[darklyrc|Windeco Exception 0]
+BorderSize=0
+Enabled=true
+ExceptionPattern=.*
+ExceptionType=0
+HideTitleBar=false
+Mask=0
 CONFIGS
 close_group
 
