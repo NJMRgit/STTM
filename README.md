@@ -1,5 +1,7 @@
 # Stoned Theme Manager
 
+**Important : I have not tested the setup or install scripts on a new system. Expect bugs. The gui and blsw.sh script can be used without install so long as you have all the dependencies already
+
 KDE Plasma theme manager with time-based mode switching. Automatically adjusts wallpaper, window glass tint, rounded-corners outline/shadow colors, fastfetch logo, and OpenRGB lighting profiles based on the time of day.
 
 <img width="4096" height="2304" alt="merged-right-5-images" src="https://github.com/user-attachments/assets/aed65dbf-1165-4dd5-a5ec-595c9904cf29" />
