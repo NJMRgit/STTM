@@ -189,7 +189,7 @@ class BlurSwitchManager(QMainWindow):
         msg = QMessageBox(parent or self)
         msg.setIcon(icon); msg.setWindowTitle(title); msg.setText(text); msg.setStandardButtons(buttons)
         msg.setStyleSheet(MSG_BOX_STYLE)
-        msg.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
+        msg.setWindowFlags(Qt.WindowType.Dialog)
         msg.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         return msg
 
@@ -255,14 +255,6 @@ class BlurSwitchManager(QMainWindow):
         if not c.isValid(): c = QColor(128,128,128)
         pm.fill(c); return QIcon(pm)
 
-    def _tint_rgb(self, mode):
-        v = self.inp.get(f"{mode}_TINT", QLineEdit(self.cfg.get(f"{mode}_TINT",""))).text().strip()
-        if v.startswith("#") and len(v)>=7:
-            try:
-                h = v.lstrip("#")
-                return (int(h[2:4],16),int(h[4:6],16),int(h[6:8],16)) if len(h)==8 else (int(h[0:2],16),int(h[2:4],16),int(h[4:6],16))
-            except: pass
-
     def _btn_style(self, r, g, b, pad=8, font_size=None):
         style = STYLE.format(r=r, g=g, b=b, p=pad)
         if font_size: style += f"font-size: {font_size}px;"
@@ -274,15 +266,31 @@ class BlurSwitchManager(QMainWindow):
             if btn: btn.setText(f"Apply {m.title()} {'(Disable Auto)' if self.auto else ''}")
 
     def _color_btns(self):
-        if self.current and (rgb := self._tint_rgb(self.current)):
-            r,g,b = rgb
-            for m in self.MODES+self.custom:
-                if btn := getattr(self, f'apply_{m.lower()}', None): btn.setStyleSheet(self._btn_style(r,g,b))
-            self.save_btn.setStyleSheet(self._btn_style(r,g,b,12)); self.auto_btn.setStyleSheet(self._btn_style(r,g,b,12))
-        else:
-            for m in self.MODES+self.custom:
-                if btn := getattr(self, f'apply_{m.lower()}', None): btn.setStyleSheet(self._btn_style(33,150,243))
-            self.save_btn.setStyleSheet(self._btn_style(76,175,80,12)); self.auto_btn.setStyleSheet(self._btn_style(255,152,0,12))
+        mode = None
+        if os.path.exists(SCHEDULE_FILE):
+            try:
+                with open(SCHEDULE_FILE) as f:
+                    m = re.search(r'_MODE=(\w+)', f.read())
+                if m:
+                    mode = m.group(1).upper()
+            except:
+                pass
+        if mode and mode in self.MODES + self.custom:
+            tint = self.cfg.get(f"{mode}_TINT", "")
+            if tint.startswith("#") and len(tint) >= 7:
+                try:
+                    h = tint.lstrip("#")
+                    rgb = (int(h[2:4],16),int(h[4:6],16),int(h[6:8],16)) if len(h)==8 else (int(h[0:2],16),int(h[2:4],16),int(h[4:6],16))
+                    r,g,b = rgb
+                    for m in self.MODES+self.custom:
+                        if btn := getattr(self, f'apply_{m.lower()}', None): btn.setStyleSheet(self._btn_style(r,g,b))
+                    self.save_btn.setStyleSheet(self._btn_style(r,g,b,12)); self.auto_btn.setStyleSheet(self._btn_style(r,g,b,12))
+                    return
+                except:
+                    pass
+        for m in self.MODES+self.custom:
+            if btn := getattr(self, f'apply_{m.lower()}', None): btn.setStyleSheet(self._btn_style(33,150,243))
+        self.save_btn.setStyleSheet(self._btn_style(76,175,80,12)); self.auto_btn.setStyleSheet(self._btn_style(255,152,0,12))
 
     def _mode_by_hour(self):
         h = datetime.now().hour
@@ -305,9 +313,7 @@ class BlurSwitchManager(QMainWindow):
                 with open(SCHEDULE_FILE) as f: m = re.search(r'_MODE=(\w+)', f.read())
                 if m and (mn := m.group(1).upper()) in self.MODES+self.custom:
                     self._sync_ui_to_mode(mn)
-                    return
             except: pass
-        self._sync_ui_to_mode(self._mode_by_hour())
 
     def _detect_scheduler(self):
         if os.environ.get("XDG_RUNTIME_DIR") and subprocess.run(["systemctl","--user","status"], capture_output=True).returncode == 0:
@@ -569,7 +575,7 @@ class BlurSwitchManager(QMainWindow):
         self._update_apply_buttons()
 
     def _setup_auto_timer(self):
-        self._save()
+        self._save(silent=True)
         if self._scheduler == "systemd":
             script_escaped = self.script.replace("\\", "\\\\").replace("\"", "\\\"")
             env = ""
@@ -689,7 +695,7 @@ class BlurSwitchManager(QMainWindow):
                 self._auto_proc.deleteLater()
                 self._auto_proc = None
 
-    def _save(self):
+    def _save(self, silent=False):
         if not os.path.exists(self.script): return
         with open(self.script) as f: lines = f.readlines()
         for k,w in self.inp.items():
@@ -701,10 +707,12 @@ class BlurSwitchManager(QMainWindow):
             for i,l in enumerate(lines):
                 if l.startswith(f"{k}="): lines[i] = f'{k}="{v}"\n'; break
         with open(self.script,"w") as f: f.writelines(lines)
+        if not silent:
+            self._styled_msgbox(QMessageBox.Icon.Information, "Saved", "Settings saved.").exec()
 
     def _apply(self, mode):
         try:
-            self._save()
+            self._save(silent=True)
             mode_upper = mode.upper()
             all_empty = all(
                 not (w := self.inp.get(f"{mode_upper}_{v}")) or not w.text().strip()
@@ -720,8 +728,6 @@ class BlurSwitchManager(QMainWindow):
             for m in self.MODES + self.custom:
                 if m.lower() == mode:
                     self._sync_ui_to_mode(m)
-                    with open(SCHEDULE_FILE, "w") as f:
-                        f.write(f"_MODE={m}\n")
                     break
         except Exception as e:
             import traceback
