@@ -92,7 +92,7 @@ close_group() {
 
 while IFS= read -r line || [ -n "$line" ]; do
     # Strip leading whitespace, skip empties and comments
-    raw=$(printf "%s" "$line" | sed 's/^[[:space:]]*//'')
+    raw=$(printf "%s" "$line" | sed 's/^[[:space:]]*//')
     case "$raw" in
         ""|"#"*) continue ;;
     esac
