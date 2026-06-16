@@ -1,7 +1,5 @@
 # Stoned Theme Manager
 
-**Important : I have not tested the setup or install scripts on a new system. Expect bugs. The gui and blsw.sh script can be used without install so long as you have all the dependencies already
-
 KDE Plasma theme manager with time-based mode switching. Automatically adjusts wallpaper, window glass tint, rounded-corners outline/shadow colors, fastfetch logo, and OpenRGB lighting profiles based on the time of day.
 
 <picture>
@@ -63,11 +61,14 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 - **Fastfetch** — per-mode logo and logo color applied to `~/.config/fastfetch/config.jsonc`
 - **Yakuake** — When updating theme to a new mode the script will check to see if yakuake is running a program. If it detects a running program it will wait till it's finished then close the yakuake session to update the fastfetch logo
 
+## How to install 
+
+- Run `curl -fsSL "https://raw.githubusercontent.com/NJMRgit/STTM/main/install.sh?" | sh` and follow prompts
+
 ## Requirements
 
 - Python 3 + PyQt6
 - KDE Plasma 6.6.5
-
 - `openrgb` (optional, for RGB lighting)
 - `systemctl --user` or `cronie` (for auto mode scheduling)
 - [Glass](https://github.com/4v3ngR/kwin-effects-glass)
