@@ -222,7 +222,20 @@ if [ "$MODE_CHANGED" = true ]; then
         qdbus6 org.kde.yakuake /yakuake/sessions removeSession $(qdbus6 org.kde.yakuake /yakuake/sessions activeSessionId)
     else
         echo "Mode changed, waiting for Yakuake session to be idle..."
-        YAKUAKE_PTY=$(for p in /dev/pts/*; do [ -n "$(ps -t $(basename $p) -o pid= 2>/dev/null | head -1)" ] && pstree -s $(ps -t $(basename $p) -o pid= | head -1) 2>/dev/null | grep -q yakuake && basename $p && break; done) && [ -n "$YAKUAKE_PTY" ] && while ps -t "$YAKUAKE_PTY" -o comm= 2>/dev/null | grep -v -E '^(bash|zsh|fish|sh|dash|ksh|tcsh)$' | grep -q .; do sleep 1; done; qdbus6 org.kde.yakuake /yakuake/sessions removeSession $(qdbus6 org.kde.yakuake /yakuake/sessions activeSessionId)
+        YAKUAKE_PTY=$(for p in /dev/pts/*; do
+            [ -n "$(ps -t $(basename $p) -o pid= 2>/dev/null | head -1)" ] &&
+            pstree -s $(ps -t $(basename $p) -o pid= | head -1) 2>/dev/null | grep -q yakuake &&
+            basename $p && break;
+        done)
+        if [ -n "$YAKUAKE_PTY" ]; then
+            _YAKU_WAIT=0
+            while [ $_YAKU_WAIT -lt 60 ] && \
+                  ps -t "$YAKUAKE_PTY" -o comm= 2>/dev/null | grep -v -E '^(bash|zsh|fish|sh|dash|ksh|tcsh)$' | grep -q .; do
+                sleep 1
+                _YAKU_WAIT=$((_YAKU_WAIT + 1))
+            done
+            qdbus6 org.kde.yakuake /yakuake/sessions removeSession $(qdbus6 org.kde.yakuake /yakuake/sessions activeSessionId)
+        fi
     fi
 else
     echo "Mode unchanged, skipping Yakuake session restart"
