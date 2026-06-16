@@ -135,7 +135,7 @@ case "$PM" in
         ;;
     *)
         echo "Error: unknown package manager"
-        echo "Please install dependencies manually: python3, PyQt6, plasma-workspace, qt6-tools, matugen, openrgb"
+        echo "Please install dependencies manually: python3, PyQt6, plasma-workspace, qt6-tools, openrgb"
         exit 1
         ;;
 esac
@@ -154,22 +154,6 @@ fi
 
 echo
 echo "--- Items from GitHub / AUR / pipx ---"
-
-# --- matugen ---
-if [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then
-    if prompt "matugen" "Material You color generator" "Install from AUR via $AUR_HELPER?"; then
-        run_install "$AUR_HELPER" -S matugen
-    fi
-elif command -v pipx >/dev/null 2>&1; then
-    if prompt "matugen" "Material You color generator" "Install via pipx?"; then
-        run_install pipx install matugen
-    fi
-elif prompt "matugen" "Material You color generator" "Get build instructions from GitHub?"; then
-    git_clone "material-you-token-generator" "https://github.com/JakeStanger/material-you-token-generator.git"
-    if [ "$TEST" = false ] && [ -d "material-you-token-generator" ]; then
-        safe_cd "material-you-token-generator" && echo "  See README.md for build/install instructions." || true
-    fi
-fi
 
 # --- darkly ---
 if [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then

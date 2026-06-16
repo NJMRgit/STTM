@@ -22,8 +22,8 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 
 <img width="2265" height="2548" alt="merged-vertical-2-images" src="https://github.com/user-attachments/assets/b0a0599c-e1b5-4b6f-aa3e-c71b2248f675" />
 
-### Material You Color Generation
-- Generates tint/shadow/outline colors automatically when adding wallpaper to a new theme
+### Automatic Color Generation
+- Generates tint/shadow/outline colors from the dominant wallpaper colors when adding wallpaper to a new theme
 
 ### Time-Based Modes
 - Five default modes: **Morning**, **Noon**, **Afternoon**, **Evening**, **Night**
@@ -52,7 +52,7 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 ### Automated Installer
 - `install.sh` — dependency installer with distro detection (pacman/apt/dnf)
 - Handles AUR packages via detected helper (yay, paru, trizen, pikaur, pacaur)
-- Offers pipx as alternative for matugen installation
+
 - Installs Darkly, We10X, kwin-effects-glass, KDE-Rounded-Corners, CachyOS-Emerald-KDE
 
 ### KDE Plasma Integration
@@ -68,7 +68,7 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 
 - Python 3 + PyQt6
 - KDE Plasma 6.6.5
-- `matugen` (for color generation)
+
 - `openrgb` (optional, for RGB lighting)
 - `systemctl --user` or `cronie` (for auto mode scheduling)
 - [Glass](https://github.com/4v3ngR/kwin-effects-glass)

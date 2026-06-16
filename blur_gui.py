@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-import sys, re, os, subprocess, math, json, colorsys
+import sys, re, os, subprocess, math, colorsys
 from datetime import datetime
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
+from PIL import Image
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PORTABLE = "--portable" in sys.argv
@@ -127,37 +128,32 @@ class BlurSwitchManager(QMainWindow):
         if not wallpaper or not os.path.exists(wallpaper):
             msg = self._styled_msgbox(QMessageBox.Icon.Warning, "Error", "No wallpaper selected!"); msg.exec()
             return
-        self._gen_mode = mode
-        if self._gen_proc is not None:
-            if self._gen_proc.state() != QProcess.ProcessState.NotRunning:
-                return
-            try:
-                self._gen_proc.finished.disconnect()
-                self._gen_proc.errorOccurred.disconnect()
-            except TypeError:
-                pass
-            self._gen_proc.deleteLater()
-        self._gen_proc = QProcess(self)
-        self._gen_proc.finished.connect(self._on_gen_finished)
-        self._gen_proc.errorOccurred.connect(lambda err: self._styled_msgbox(QMessageBox.Icon.Critical, "Error", f"matugen error: {err}").exec())
-        self._gen_proc.start("matugen", ["image", "-j", "hex", "--prefer", "darkness", wallpaper])
-
-    def _on_gen_finished(self, exit_code, exit_status):
-        proc = self.sender()
-        if proc is None:
-            self._styled_msgbox(QMessageBox.Icon.Critical, "Error", "matugen generation failed").exec()
-            return
-        if exit_code != 0:
-            err = bytes(proc.readAllStandardError()).decode().strip()
-            self._styled_msgbox(QMessageBox.Icon.Critical, "Error", f"matugen failed:\n{err}").exec()
-            return
-        output = bytes(proc.readAll()).decode()
         try:
-            data = json.loads(output)
-            colors = {k: v["default"]["color"].lstrip("#") for k, v in data.get("colors", {}).items()}
-            self._apply_generated_colors(colors, self._gen_mode)
+            img = Image.open(wallpaper)
+            img = img.resize((100, 100)).convert("RGB")
+            pal = img.quantize(colors=5)
+            palette = pal.getpalette()
+            color_counts = pal.getcolors()
+            if not color_counts:
+                raise Exception("Could not extract colors from wallpaper")
+            color_counts.sort(reverse=True, key=lambda x: x[0])
+            dominant = None
+            for count, idx in color_counts:
+                r = palette[idx*3]; g = palette[idx*3+1]; b = palette[idx*3+2]
+                if r < 40 and g < 40 and b < 40:
+                    continue
+                if r > 220 and g > 220 and b > 220:
+                    continue
+                dominant = f"{r:02x}{g:02x}{b:02x}"
+                break
+            if not dominant:
+                cnt, idx = color_counts[0]
+                r = palette[idx*3]; g = palette[idx*3+1]; b = palette[idx*3+2]
+                dominant = f"{r:02x}{g:02x}{b:02x}"
+            colors = {"primary_container": dominant}
+            self._apply_generated_colors(colors, mode)
         except Exception as e:
-            self._styled_msgbox(QMessageBox.Icon.Critical, "Error", f"Failed:\n{str(e)}").exec()
+            self._styled_msgbox(QMessageBox.Icon.Critical, "Error", f"Color extraction failed:\n{str(e)}").exec()
 
     def _apply_generated_colors(self, colors, mode):
         def hex_to_rgb(h):
@@ -167,7 +163,7 @@ class BlurSwitchManager(QMainWindow):
             if h: return f"#{alpha:02x}{h[0:2]}{h[2:4]}{h[4:6]}"
             return ""
         if "primary_container" not in colors:
-            self._styled_msgbox(QMessageBox.Icon.Warning, "Warning", "Could not generate colors from this wallpaper (no primary_container in matugen output).").exec()
+            self._styled_msgbox(QMessageBox.Icon.Warning, "Warning", "Could not generate colors from this wallpaper (no primary_container in color extraction output).").exec()
             return
         pc = colors["primary_container"]
         pr, pg, pb = int(pc[0:2],16), int(pc[2:4],16), int(pc[4:6],16)
