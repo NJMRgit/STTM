@@ -67,7 +67,7 @@ fi
 echo
 
 # Ensure config files exist before writing to them
-for cfg in breezerc darklyrc; do
+for cfg in breezerc darklyrc kwinrc kwinrulesrc; do
     path="$HOME/.config/$cfg"
     if [ ! -f "$path" ]; then
         echo "  Creating $cfg..."
@@ -375,6 +375,25 @@ ExceptionPattern=.*
 ExceptionType=0
 HideTitleBar=false
 Mask=0
+
+[darklyrc|Common]
+ButtonHeight=8
+CornerRadius=7
+FancyMargins=false
+ShadowColor=20,50,42
+ShadowStrength=51
+SunkenEffect=true
+
+[darklyrc|Style]
+DisableDolphinUrlNavigatorBackground=false
+DolphinSidebarOpacity=18
+DolphinViewOpacity=18
+MenuOpacity=20
+TabBarOpacity=18
+TabDrawHighlight=true
+
+[darklyrc|Windeco]
+RoundedCorners=false
 
 [darklyrc|Windeco Exception 0]
 BorderSize=0

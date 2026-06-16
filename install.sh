@@ -80,6 +80,15 @@ detect_pm() {
     fi
 }
 
+check_installed() {
+    pkg="$1"
+    case "$PM" in
+        pacman) pacman -Q "$pkg" >/dev/null 2>&1 ;;
+        apt) dpkg -l "$pkg" >/dev/null 2>&1 ;;
+        dnf) rpm -q "$pkg" >/dev/null 2>&1 ;;
+    esac
+}
+
 printf '\033[36m'
 printf '███████╗ ████████╗ ████████╗ ███╗   ███╗\n'
 printf '██╔════╝ ╚══██╔══╝ ╚══██╔══╝ ████╗ ████║\n'
@@ -140,14 +149,27 @@ case "$PM" in
         ;;
 esac
 
-# shellcheck disable=SC2086
-PKG_LIST=$(printf '%s\n' $BASE | sed '/^$/d; s/^/  - /')
-if prompt "Check system package manager for available packages?" "$PKG_LIST"; then
-    # shellcheck disable=SC2086
-    run_install $INSTALL_CMD $BASE
-    # openrgb may not be in default repos on apt/dnf, try separately
-    if [ -n "$EXTRA_APT" ] || [ -n "$EXTRA_DNF" ]; then
-        extra=${EXTRA_APT:-$EXTRA_DNF}
+MISSING=""
+for pkg in $BASE; do
+    if [ -n "$pkg" ] && ! check_installed "$pkg"; then
+        MISSING="$MISSING $pkg"
+    fi
+done
+
+if [ -n "$MISSING" ]; then
+    PKG_LIST=$(printf '%s\n' $MISSING | sed '/^$/d; s/^/  - /')
+    if prompt "The following packages need to be installed:" "$PKG_LIST"; then
+        # shellcheck disable=SC2086
+        run_install $INSTALL_CMD $MISSING
+    fi
+else
+    echo "  All system packages already installed."
+fi
+
+# openrgb may not be in default repos on apt/dnf, try separately
+if [ -n "$EXTRA_APT" ] || [ -n "$EXTRA_DNF" ]; then
+    extra=${EXTRA_APT:-$EXTRA_DNF}
+    if ! check_installed "$extra"; then
         run_install $INSTALL_CMD "$extra" 2>/dev/null || echo "  $extra not found in repositories, skipping (install manually if needed)"
     fi
 fi
@@ -219,6 +241,28 @@ if prompt "we10x" "Windows 11 style GTK theme" "Install from GitHub? (recommende
         echo "  [test] would run: ./We10X-gtk-theme/install.sh -t grey -c dark -s compact -i arch --tweaks float round blur noborder"
     elif [ -d "We10X-gtk-theme" ]; then
         (cd We10X-gtk-theme && ./install.sh -t grey -c dark -s compact -i arch --tweaks float round blur noborder) || echo "  Warning: We10X install failed."
+    fi
+fi
+
+# --- Install color scheme ---
+echo
+echo "--- Installing color scheme and plasma theme ---"
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+mkdir -p "$HOME/.local/share/color-schemes"
+if [ -f "$SCRIPT_DIR/glassd.colors" ]; then
+    cp "$SCRIPT_DIR/glassd.colors" "$HOME/.local/share/color-schemes/glassd.colors"
+    echo "  Installed glassd color scheme."
+else
+    echo "  Warning: glassd.colors not found next to install script."
+fi
+
+# --- Install CachyOS Emerald plasma theme ---
+if [ -d "CachyOS-Emerald-KDE" ]; then
+    plasmadir="$HOME/.local/share/plasma"
+    mkdir -p "$plasmadir"
+    if [ -d "CachyOS-Emerald-KDE/plasma" ]; then
+        cp -r "CachyOS-Emerald-KDE/plasma"/* "$plasmadir/" 2>/dev/null
+        echo "  Installed CachyOS Emerald plasma theme."
     fi
 fi
 
