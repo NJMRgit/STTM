@@ -1,6 +1,5 @@
 #!/bin/sh
 
-set -e
 
 TEST=false
 for arg in "$@"; do
@@ -226,7 +225,7 @@ if check_darkly; then
     type_text "  darkly"; printf '\033[32m✓\033[0m\n'
 elif [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then
     if prompt "darkly" "Global dark theme for KDE/GTK" "Install from AUR via $AUR_HELPER?"; then
-        run_install "$AUR_HELPER" -S darkly-bin
+        run_install "$AUR_HELPER" -S darkly-bin < /dev/tty
     fi
 elif [ "$PM" = "dnf" ]; then
     if prompt "darkly" "Global dark theme for KDE/GTK" "Install via Copr?"; then
@@ -245,7 +244,7 @@ if check_glass; then
     type_text "  kwin-effects-glass"; printf ' \033[32m✓\033[0m\n'
 elif [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then
     if prompt "kwin-effects-glass" "Blur/glass KWin effect" "Install from AUR via $AUR_HELPER?"; then
-        run_install "$AUR_HELPER" -S kwin-effects-glass-git
+        run_install "$AUR_HELPER" -S kwin-effects-glass-git < /dev/tty
     fi
 elif [ "$PM" = "dnf" ]; then
     if prompt "kwin-effects-glass" "Blur/glass KWin effect" "Install via Copr?"; then
@@ -264,7 +263,7 @@ if check_rounded; then
     type_text "  kwin-rounded-corners"; printf ' \033[32m✓\033[0m\n'
 elif [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then
     if prompt "kwin-rounded-corners" "Rounded corners KWin effect" "Install from AUR via $AUR_HELPER?"; then
-        run_install "$AUR_HELPER" -S kwin-effect-rounded-corners-git
+        run_install "$AUR_HELPER" -S kwin-effect-rounded-corners-git < /dev/tty
     fi
 elif [ "$PM" = "dnf" ]; then
     if prompt "kwin-rounded-corners" "Rounded corners KWin effect" "Install via Copr?"; then
