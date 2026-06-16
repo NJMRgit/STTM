@@ -5,9 +5,9 @@
 KDE Plasma theme manager with time-based mode switching. Automatically adjusts wallpaper, window glass tint, rounded-corners outline/shadow colors, fastfetch logo, and OpenRGB lighting profiles based on the time of day.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/aed65dbf-1165-4dd5-a5ec-595c9904cf29">
-  <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/aed65dbf-1165-4dd5-a5ec-595c9904cf29">
-  <img alt="Project Logo" src="https://github.com/user-attachments/assets/aed65dbf-1165-4dd5-a5ec-595c9904cf29">
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/c1c8ab32-b5de-473d-b466-611d6ad87ae5">
+  <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/c1c8ab32-b5de-473d-b466-611d6ad87ae5">
+  <img alt="Project Logo" src="https://github.com/user-attachments/assets/c1c8ab32-b5de-473d-b466-611d6ad87ae5">
 </picture>
 
 ## Features
@@ -20,7 +20,6 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 - **Fastfetch Logo** — Fastfetch logo file and logo color (Currently Ascii only)
 - **OpenRGB Profile** — set RGB lighting profile on per-theme basis
 
-<img width="2265" height="2548" alt="merged-vertical-2-images" src="https://github.com/user-attachments/assets/b0a0599c-e1b5-4b6f-aa3e-c71b2248f675" />
 
 ### Automatic Color Generation
 - Generates tint/shadow/outline colors from the dominant wallpaper colors when adding wallpaper to a new theme
