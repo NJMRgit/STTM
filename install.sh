@@ -10,6 +10,7 @@ for arg in "$@"; do
 done
 
 TMPDIR=""
+RAWBASE="https://raw.githubusercontent.com/NJMRgit/STTM/main"
 
 cleanup() {
     if [ "$TEST" = true ] && [ -n "$TMPDIR" ]; then
@@ -17,6 +18,18 @@ cleanup() {
     fi
 }
 trap cleanup EXIT
+
+fetch_file() {
+    dest="$1"
+    url="$2"
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "$url" -o "$dest"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q "$url" -O "$dest"
+    else
+        return 1
+    fi
+}
 
 prompt() {
     if [ "$TEST" = true ]; then
@@ -66,6 +79,30 @@ git_clone() {
     fi
 }
 
+group_open=false
+
+# Type text with per-character delay
+type_text() {
+    str="$1"
+    while [ -n "$str" ]; do
+        c=$(printf '%s' "$str" | sed 's/\(.\).*/\1/')
+        printf '%s' "$c"
+        str=$(printf '%s' "$str" | sed 's/.//')
+        sleep 0.0015
+    done
+}
+
+close_group() {
+    if $group_open; then
+        for c in - \\ \| / -; do
+            printf '%s\b' "$c"
+            sleep 0.017
+        done
+        printf '\033[32m✓\033[0m\n'
+        group_open=false
+    fi
+}
+
 # ----------------------------------------------------------------
 
 detect_pm() {
@@ -88,6 +125,13 @@ check_installed() {
         dnf) rpm -q "$pkg" >/dev/null 2>&1 ;;
     esac
 }
+
+check_darkly()     { kpackagetool5 --type KWin/Decoration --list -g 2>/dev/null | grep -qi "darkly"; }
+check_glass()      { [ -f "/usr/lib/qt6/plugins/kwin/effects/plugins/glass.so" ] || kpackagetool5 --type KWin/Effect --list -g 2>/dev/null | grep -qi "glass"; }
+check_rounded()    { [ -f "/usr/lib/qt6/plugins/kwin/effects/plugins/kwin4_effect_shapecorners.so" ] || kpackagetool5 --type KWin/Effect --list -g 2>/dev/null | grep -qiE "rounded|shapecorner"; }
+check_emerald()    { [ -d "$HOME/.local/share/plasma/desktoptheme/cachyos-emerald" ] || [ -d "/usr/share/plasma/desktoptheme/cachyos-emerald" ]; }
+check_we10x()      { ls "$HOME/.themes/" 2>/dev/null | grep -qi "we10x" || ls "$HOME/.local/share/themes/" 2>/dev/null | grep -qi "we10x" || ls "/usr/share/themes/" 2>/dev/null | grep -qi "we10x"; }
+check_glassd()     { [ -f "$HOME/.local/share/color-schemes/glassd.colors" ]; }
 
 printf '\033[36m'
 printf '███████╗ ████████╗ ████████╗ ███╗   ███╗\n'
@@ -175,10 +219,12 @@ if [ -n "$EXTRA_APT" ] || [ -n "$EXTRA_DNF" ]; then
 fi
 
 echo
-echo "--- Items from GitHub / AUR / pipx ---"
+close_group; type_text "--- Items from GitHub / AUR / pipx ---"; echo
 
 # --- darkly ---
-if [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then
+if check_darkly; then
+    type_text "  darkly"; printf '\033[32m✓\033[0m\n'
+elif [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then
     if prompt "darkly" "Global dark theme for KDE/GTK" "Install from AUR via $AUR_HELPER?"; then
         run_install "$AUR_HELPER" -S darkly-bin
     fi
@@ -195,7 +241,9 @@ elif prompt "darkly" "Global dark theme for KDE/GTK" "Build from GitHub? (https:
 fi
 
 # --- kwin-effects-glass ---
-if [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then
+if check_glass; then
+    type_text "  kwin-effects-glass"; printf ' \033[32m✓\033[0m\n'
+elif [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then
     if prompt "kwin-effects-glass" "Blur/glass KWin effect" "Install from AUR via $AUR_HELPER?"; then
         run_install "$AUR_HELPER" -S kwin-effects-glass-git
     fi
@@ -212,7 +260,9 @@ elif prompt "kwin-effects-glass" "Blur/glass KWin effect" "Build from GitHub? (h
 fi
 
 # --- KDE-Rounded-Corners ---
-if [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then
+if check_rounded; then
+    type_text "  kwin-rounded-corners"; printf ' \033[32m✓\033[0m\n'
+elif [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then
     if prompt "kwin-rounded-corners" "Rounded corners KWin effect" "Install from AUR via $AUR_HELPER?"; then
         run_install "$AUR_HELPER" -S kwin-effect-rounded-corners-git
     fi
@@ -229,13 +279,23 @@ elif prompt "kwin-rounded-corners" "Rounded corners KWin effect" "Build from Git
 fi
 
 # --- CachyOS-Emerald-KDE ---
-if prompt "cachyos-emerald" "CachyOS Emerald Plasma theme" "Install from GitHub?"; then
+if check_emerald; then
+    type_text "  CachyOS Emerald"; printf ' \033[32m✓\033[0m\n'
+elif prompt "cachyos-emerald" "CachyOS Emerald Plasma theme" "Install from GitHub?"; then
     git_clone "CachyOS-Emerald-KDE" "https://github.com/CachyOS/CachyOS-Emerald-KDE.git"
-    echo "  Copy the 'plasma' folder contents to ~/.local/share/plasma/ to install."
+    if [ "$TEST" = false ] && [ -d "CachyOS-Emerald-KDE/plasma" ]; then
+        plasmadir="$HOME/.local/share/plasma"
+        mkdir -p "$plasmadir"
+        cp -r "CachyOS-Emerald-KDE/plasma"/* "$plasmadir/" 2>/dev/null
+        printf "  Installed CachyOS Emerald plasma theme."
+        group_open=true; close_group
+    fi
 fi
 
 # --- We10X ---
-if prompt "we10x" "Windows 11 style GTK theme" "Install from GitHub? (recommended)"; then
+if check_we10x; then
+    type_text "  We10X"; printf ' \033[32m✓\033[0m\n'
+elif prompt "we10x" "Windows 11 style GTK theme" "Install from GitHub? (recommended)"; then
     git_clone "We10X-gtk-theme" "https://github.com/yeyushengfan258/We10X-gtk-theme.git"
     if [ "$TEST" = true ]; then
         echo "  [test] would run: ./We10X-gtk-theme/install.sh -t grey -c dark -s compact -i arch --tweaks float round blur noborder"
@@ -246,25 +306,35 @@ fi
 
 # --- Install color scheme ---
 echo
-echo "--- Installing color scheme and plasma theme ---"
-SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+type_text "--- Installing color scheme ---"; echo
 mkdir -p "$HOME/.local/share/color-schemes"
-if [ -f "$SCRIPT_DIR/glassd.colors" ]; then
-    cp "$SCRIPT_DIR/glassd.colors" "$HOME/.local/share/color-schemes/glassd.colors"
-    echo "  Installed glassd color scheme."
+if check_glassd; then
+    type_text "  glassd color scheme"; printf ' \033[32m✓\033[0m\n'
 else
-    echo "  Warning: glassd.colors not found next to install script."
-fi
-
-# --- Install CachyOS Emerald plasma theme ---
-if [ -d "CachyOS-Emerald-KDE" ]; then
-    plasmadir="$HOME/.local/share/plasma"
-    mkdir -p "$plasmadir"
-    if [ -d "CachyOS-Emerald-KDE/plasma" ]; then
-        cp -r "CachyOS-Emerald-KDE/plasma"/* "$plasmadir/" 2>/dev/null
-        echo "  Installed CachyOS Emerald plasma theme."
+    SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+    if [ -f "$SCRIPT_DIR/glassd.colors" ]; then
+        cp "$SCRIPT_DIR/glassd.colors" "$HOME/.local/share/color-schemes/glassd.colors"
+        printf "  Installed glassd color scheme."
+        group_open=true; close_group
+    elif fetch_file "/tmp/glassd.colors" "$RAWBASE/glassd.colors"; then
+        cp "/tmp/glassd.colors" "$HOME/.local/share/color-schemes/glassd.colors"
+        printf "  Installed glassd color scheme."
+        group_open=true; close_group
+    else
+        echo "  Warning: could not fetch glassd.colors."
     fi
 fi
 
+SETUP_SCRIPT=""
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+if [ -f "$SCRIPT_DIR/setup.sh" ]; then
+    SETUP_SCRIPT="$SCRIPT_DIR/setup.sh"
+elif fetch_file "/tmp/sttm-setup.sh" "$RAWBASE/setup.sh"; then
+    SETUP_SCRIPT="/tmp/sttm-setup.sh"
+fi
+
+if [ -n "$SETUP_SCRIPT" ] && prompt "First Time Setup" "Configure KDE theme, glass effect, and rounded corners?" "Run first-time setup?"; then
+    sh "$SETUP_SCRIPT"
+fi
+
 echo
-echo "Done. Run: python3 blur_gui.py"

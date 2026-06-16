@@ -34,7 +34,7 @@ type_text() {
         c=$(printf '%s' "$str" | sed 's/\(.\).*/\1/')
         printf '%s' "$c"
         str=$(printf '%s' "$str" | sed 's/.//')
-        sleep 0.003
+        sleep 0.0015
     done
 }
 
@@ -59,7 +59,10 @@ echo "  - Sets outline and glow defaults"
 echo "  - Enables Darkly application theme"
 echo "  - Enables CachyOS Emerald Plasma theme"
 echo "  - Adds window rule for CSD shadow compatability"
-echo
+echo "       ** Force disables window decorations so shadows are properly drawn"
+echo "  - Adds window-specific override in breeze/darkly window decorations (forces window decorations back on while still drawing shadows)"
+echo "       ** Force window decorations back on while still drawing shadows"
+echo ""
 if ! prompt_yn "Apply these changes?"; then
     echo "Aborted."
     exit 0
@@ -83,7 +86,7 @@ close_group() {
     if $group_open; then
         for c in - \\ \| / -; do
             printf '%s\b' "$c"
-            sleep 0.035
+            sleep 0.017
         done
         printf '\033[32m✓\033[0m\n'
         group_open=false
@@ -616,6 +619,6 @@ else
 fi
 
 echo
-echo "Install Complete. You may need to log out/restart for all changes to take effect."
+echo "Install Complete."
 printf "\n%s" "Press Enter to exit."
 read -r REPLY
