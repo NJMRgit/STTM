@@ -586,29 +586,28 @@ fetch_file() {
     fi
 }
 
+cp_or_fetch() {
+    file="$1"
+    if [ -f "$SCRIPT_DIR/$file" ]; then
+        cp "$SCRIPT_DIR/$file" "$HOME/.local/bin/$file"
+    elif [ -n "$STTM_RAWBASE" ]; then
+        fetch_file "$HOME/.local/bin/$file" "$STTM_RAWBASE/$file"
+    else
+        echo "  Warning: $file not found, skipping."
+        return 1
+    fi
+}
+
 if prompt_yn "Install Stoned Theme Manager to ~/.local/bin?"; then
     echo "Installing STTM GUI..."
     mkdir -p "$HOME/.local/bin"
     SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
-    if [ -f "$SCRIPT_DIR/blur_gui.py" ]; then
-        cp "$SCRIPT_DIR/blur_gui.py" "$HOME/.local/bin/"
-    elif [ -n "$STTM_RAWBASE" ] && fetch_file "$HOME/.local/bin/blur_gui.py" "$STTM_RAWBASE/blur_gui.py"; then
-        :
-    else
-        echo "  Warning: blur_gui.py not found, skipping."
-    fi
-    if [ -f "$SCRIPT_DIR/blsw.sh" ]; then
-        cp "$SCRIPT_DIR/blsw.sh" "$HOME/.local/bin/"
-    elif [ -n "$STTM_RAWBASE" ] && fetch_file "$HOME/.local/bin/blsw.sh" "$STTM_RAWBASE/blsw.sh"; then
-        :
-    else
-        echo "  Warning: blsw.sh not found, skipping."
-    fi
+    cp_or_fetch "blur_gui.py" || true
+    cp_or_fetch "blsw.sh" || true
     chmod +x "$HOME/.local/bin/blur_gui.py" "$HOME/.local/bin/blsw.sh" 2>/dev/null || true
 
     echo "Installing icon..."
     mkdir -p "$HOME/.local/share/icons/hicolor/256x256/apps"
-    icon_src=""
     if [ -f "$SCRIPT_DIR/icon.png" ]; then
         icon_src="$SCRIPT_DIR/icon.png"
     elif [ -n "$STTM_RAWBASE" ]; then
