@@ -111,7 +111,7 @@ fi
 
 case "$PM" in
     pacman)
-        BASE="python-pyqt6 plasma-workspace qt6-tools openrgb $CRON_PKG"
+        BASE="python-pyqt6 plasma-workspace qt6-tools python-pillow openrgb $CRON_PKG"
         INSTALL_CMD="sudo pacman -S --needed"
         AUR_HELPER=""
         for h in yay paru trizen pikaur pacaur; do
@@ -122,20 +122,20 @@ case "$PM" in
         done
         ;;
     apt)
-        BASE="python3-pyqt6 plasma-workspace qt6-base-dev-tools $CRON_PKG"
+        BASE="python3-pyqt6 plasma-workspace qt6-base-dev-tools python3-pil $CRON_PKG"
         INSTALL_CMD="sudo apt install"
         AUR_HELPER=""
         EXTRA_APT="openrgb"
         ;;
     dnf)
-        BASE="python3-pyqt6 plasma-workspace qt6-qtbase-tools $CRON_PKG"
+        BASE="python3-pyqt6 plasma-workspace qt6-qtbase-tools python3-pillow $CRON_PKG"
         INSTALL_CMD="sudo dnf install"
         AUR_HELPER=""
         EXTRA_DNF="openrgb"
         ;;
     *)
         echo "Error: unknown package manager"
-        echo "Please install dependencies manually: python3, PyQt6, plasma-workspace, qt6-tools, openrgb"
+        echo "Please install dependencies manually: python3, PyQt6, Pillow, plasma-workspace, qt6-tools, openrgb"
         exit 1
         ;;
 esac
