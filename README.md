@@ -17,10 +17,10 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 - **Fastfetch Logo** — Fastfetch logo file and logo color (Currently Ascii only)
 - **OpenRGB Profile** — set RGB lighting profile on per-theme basis
 
+<img width="2265" height="2548" alt="merged-vertical-2-images" src="https://github.com/user-attachments/assets/b0a0599c-e1b5-4b6f-aa3e-c71b2248f675" />
+
 ### Material You Color Generation
 - Generates tint/shadow/outline colors automatically when adding wallpaper to a new theme
-
-<img width="2265" height="2548" alt="merged-vertical-2-images" src="https://github.com/user-attachments/assets/b0a0599c-e1b5-4b6f-aa3e-c71b2248f675" />
 
 ### Time-Based Modes
 - Five default modes: **Morning**, **Noon**, **Afternoon**, **Evening**, **Night**
