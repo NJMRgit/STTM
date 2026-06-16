@@ -4,29 +4,30 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 
 ## Features
 
+### Customization Options
+- **Wallpaper** — set a different wallpaper
+- **Glass Tint** — Glass tint color 
+- **Outline Colors** — rounded-corners outline (active + inactive) 
+- **Shadow Colors** — rounded-corners shadow (active + inactive)
+- **Fastfetch Logo** — Fastfetch logo file and logo color (Currently Ascii only)
+- **OpenRGB Profile** — set RGB lighting profile on per-theme basis
+
+### Material You Color Generation
+- Generates tint/shadow/outline colors automatically when adding wallpaper to a new theme
+
 ### Time-Based Modes
 - Five default modes: **Morning**, **Noon**, **Afternoon**, **Evening**, **Night**
 - Configurable trigger hour for each mode (24-hour format)
 - Auto mode: systemd timer or cron checks hourly and applies the correct mode
-- Custom modes can be added/removed from the GUI
+
+### Custom themes
+- Add custom themes to directly to script or with included GUI
+- Enabling custom themes in GUI disables schedule mode 
 
 ### Partial Mode Application
 - Empty settings in a mode are skipped — previously applied or manually configured values persist
 - Apply only the settings you want per mode (e.g., set wallpaper without touching fastfetch logo)
 - Enables sparse mode configs: set just tint + wallpaper for morning, just wallpaper for evening, etc.
-
-### Per-Mode Settings
-- **Wallpaper** — set a different wallpaper per mode
-- **Glass Tint** — Glass tint color 
-- **Outline Colors** — rounded-corners outline (active + inactive) 
-- **Shadow Colors** — rounded-corners shadow (active + inactive)
-- **Fastfetch Logo** — per-mode logo file and logo color
-- **OpenRGB Profile** — per-mode RGB lighting profile
-
-### Material You Color Generation
-- Generates tint/shadow/outline colors automatically when adding wallpaper to an unconfigured mode
-- Warns when a wallpaper has no extracted colors (no `primary_container`)
-- Button to regenerate colors when updating wallpaper
 
 ### Portable Config
 - Default config stored at `~/.config/sttm/sttm.conf`
@@ -89,6 +90,9 @@ The backend script can also be called directly:
 # First-time KDE theme setup
 ./setup.sh
 ```
+## Tips
+
+- Calling the script directly allows changing to a custom theme without disabling scheduled mode
 
 ## Files
 
