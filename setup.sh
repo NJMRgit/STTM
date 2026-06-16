@@ -317,9 +317,9 @@ WindowClasses=gsr-ui\nactivate-linux
 
 [kwinrc|Plugins]
 blurEnabled=false
-fadeEnabled=true  #(Prompt user for this change — prompt reads: Change animations? May prevent flicker)
+fadeEnabled=true  
 glassEnabled=true
-scaleEnabled=false  #(include as part of the previous prompt)
+scaleEnabled=false  
 
 [kwinrc|Round-Corners]
 ActiveShadowAlpha=170
@@ -333,7 +333,6 @@ InactiveCornerRadius=6
 InactiveOutlineColor=55,55,55
 InactiveOutlineThickness=4
 InactiveSecondOutlineThickness=0
-InactiveShadowAlpha=  #(prompt user between 0 (off) and 170 (on) — enable inactive shadows *not recommended)
 InactiveShadowColor=55,55,55
 InactiveShadowSize=50
 InactiveShadowUseCustom=true
