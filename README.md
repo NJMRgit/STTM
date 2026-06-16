@@ -68,7 +68,7 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 
 - Python 3 + PyQt6
 - KDE Plasma 6.6.5
-- `matugen` (for color generation) — install via AUR, pipx, or GitHub
+- `matugen` (for color generation)
 - `openrgb` (optional, for RGB lighting)
 - `systemctl --user` or `cronie` (for auto mode scheduling)
 - [Glass](https://github.com/4v3ngR/kwin-effects-glass)
