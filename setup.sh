@@ -31,7 +31,7 @@ apply() {
 type_text() {
     str="$1"
     while [ -n "$str" ]; do
-        c=$(printf '%s' "$str" | sed 's/\(.\).*/\1/')
+        c=$(printf '%s' "$str" | sed 's/\(.\.*/\1/')
         printf '%s' "$c"
         str=$(printf '%s' "$str" | sed 's/.//')
         sleep 0.003
@@ -40,7 +40,7 @@ type_text() {
 
 # Strip inline comment markers
 clean() {
-    echo "$1" | sed 's/[[:space:]]*#(.*//;s/[[:space:]][[:space:]]*#.*//;s/[[:space:]]*$//'
+    echo "$1" | sed 's/[[:space:]]*#.*//' | sed 's/[[:space:]]*$//'
 }
 
 printf '\033[36m'
@@ -83,7 +83,7 @@ close_group() {
 
 while IFS= read -r line || [ -n "$line" ]; do
     # Strip leading whitespace, skip empties and comments
-    raw=$(printf "%s" "$line" | sed 's/^[[:space:]]*//')
+    raw=$(printf "%s" "$line" | sed 's/^[[:space:]]*//'')
     case "$raw" in
         ""|"#"*) continue ;;
     esac
@@ -305,9 +305,6 @@ Brightness=0.85
 EdgeLighting=true
 EdgeLightingTooltip=true
 FakeBlur=true
-FakeBlurImage=/home/stoned/Documents/BlurBackground/background.jpg
-FakeBlurImageSourceCustom=true
-FakeBlurImageSourceDesktopWallpaper=false
 GlowColor=
 MenuCornerRadius=11.5
 NoiseStrength=3
@@ -534,7 +531,7 @@ echo "  directory with: python3 blur_gui.py --portable"
 if prompt_yn "Install Stoned Theme Manager to /opt/sttm?"; then
     echo "Installing STTM GUI..."
     sudo mkdir -p /opt/sttm
-    SCRIPT_DIR=$(dirname "$0")
+    SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
     sudo cp "$SCRIPT_DIR/blur_gui.py" /opt/sttm/
     sudo cp "$SCRIPT_DIR/blsw.sh" /opt/sttm/
     sudo chmod +x /opt/sttm/blur_gui.py /opt/sttm/blsw.sh

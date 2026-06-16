@@ -24,13 +24,13 @@ prompt() {
         return 0
     fi
     if [ $# -eq 2 ]; then
-        printf "\n%s\n%s\n  [Y/n]: " "$1" "$2"
+        printf "\n%s\n%s\n  [Y/n]: " "$1" "$2" >&2
     else
-        printf "\n[%s]" "$1"
-        [ -n "$2" ] && printf " %s" "$2"
-        printf "\n%s [Y/n]: " "$3"
+        printf "\n[%s]" "$1" >&2
+        [ -n "$2" ] && printf " %s" "$2" >&2
+        printf "\n%s [Y/n]: " "$3" >&2
     fi
-    read -r ans
+    read -r ans < /dev/tty
     case "$ans" in
         [nN]|[nN][oO]) return 1 ;;
         *) return 0 ;;
@@ -43,6 +43,10 @@ run_install() {
         return 0
     fi
     "$@"
+}
+
+safe_cd() {
+    cd "$1" 2>/dev/null || { echo "  Failed to enter $1" >&2; return 1; }
 }
 
 git_clone() {
@@ -74,10 +78,6 @@ detect_pm() {
     else
         echo "unknown"
     fi
-}
-
-safe_cd() {
-    cd "$1" 2>/dev/null || { echo "  Failed to enter $1" >&2; return 1; }
 }
 
 printf '\033[36m'
@@ -148,7 +148,7 @@ if prompt "Check system package manager for available packages?" "$PKG_LIST"; th
     # openrgb may not be in default repos on apt/dnf, try separately
     if [ -n "$EXTRA_APT" ] || [ -n "$EXTRA_DNF" ]; then
         extra=${EXTRA_APT:-$EXTRA_DNF}
-        run_install $INSTALL_CMD $extra 2>/dev/null || echo "  $extra not found in repositories, skipping (install manually if needed)"
+        run_install $INSTALL_CMD "$extra" 2>/dev/null || echo "  $extra not found in repositories, skipping (install manually if needed)"
     fi
 fi
 
@@ -158,7 +158,7 @@ echo "--- Items from GitHub / AUR / pipx ---"
 # --- matugen ---
 if [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then
     if prompt "matugen" "Material You color generator" "Install from AUR via $AUR_HELPER?"; then
-        run_install $AUR_HELPER -S matugen
+        run_install "$AUR_HELPER" -S matugen
     fi
 elif command -v pipx >/dev/null 2>&1; then
     if prompt "matugen" "Material You color generator" "Install via pipx?"; then
@@ -166,13 +166,15 @@ elif command -v pipx >/dev/null 2>&1; then
     fi
 elif prompt "matugen" "Material You color generator" "Get build instructions from GitHub?"; then
     git_clone "material-you-token-generator" "https://github.com/JakeStanger/material-you-token-generator.git"
-    echo "  See material-you-token-generator/README.md for build/install instructions."
+    if [ "$TEST" = false ] && [ -d "material-you-token-generator" ]; then
+        safe_cd "material-you-token-generator" && echo "  See README.md for build/install instructions." || true
+    fi
 fi
 
 # --- darkly ---
 if [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then
     if prompt "darkly" "Global dark theme for KDE/GTK" "Install from AUR via $AUR_HELPER?"; then
-        run_install $AUR_HELPER -S darkly-bin
+        run_install "$AUR_HELPER" -S darkly-bin
     fi
 elif [ "$PM" = "dnf" ]; then
     if prompt "darkly" "Global dark theme for KDE/GTK" "Install via Copr?"; then
@@ -181,13 +183,15 @@ elif [ "$PM" = "dnf" ]; then
     fi
 elif prompt "darkly" "Global dark theme for KDE/GTK" "Build from GitHub? (https://github.com/Bali10050/Darkly.git)"; then
     git_clone "Darkly" "https://github.com/Bali10050/Darkly.git"
-    [ "$TEST" = false ] && echo "  See Darkly/README.md for build/install instructions."
+    if [ "$TEST" = false ] && [ -d "Darkly" ]; then
+        safe_cd "Darkly" && echo "  See README.md for build/install instructions." || true
+    fi
 fi
 
 # --- kwin-effects-glass ---
 if [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then
     if prompt "kwin-effects-glass" "Blur/glass KWin effect" "Install from AUR via $AUR_HELPER?"; then
-        run_install $AUR_HELPER -S kwin-effects-glass-git
+        run_install "$AUR_HELPER" -S kwin-effects-glass-git
     fi
 elif [ "$PM" = "dnf" ]; then
     if prompt "kwin-effects-glass" "Blur/glass KWin effect" "Install via Copr?"; then
@@ -196,13 +200,15 @@ elif [ "$PM" = "dnf" ]; then
     fi
 elif prompt "kwin-effects-glass" "Blur/glass KWin effect" "Build from GitHub? (https://github.com/4v3ngR/kwin-effects-glass.git)"; then
     git_clone "kwin-effects-glass" "https://github.com/4v3ngR/kwin-effects-glass.git"
-    [ "$TEST" = false ] && echo "  See repo for build/install instructions."
+    if [ "$TEST" = false ] && [ -d "kwin-effects-glass" ]; then
+        safe_cd "kwin-effects-glass" && echo "  See repo for build/install instructions." || true
+    fi
 fi
 
 # --- KDE-Rounded-Corners ---
 if [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then
     if prompt "kwin-rounded-corners" "Rounded corners KWin effect" "Install from AUR via $AUR_HELPER?"; then
-        run_install $AUR_HELPER -S kwin-effect-rounded-corners-git
+        run_install "$AUR_HELPER" -S kwin-effect-rounded-corners-git
     fi
 elif [ "$PM" = "dnf" ]; then
     if prompt "kwin-rounded-corners" "Rounded corners KWin effect" "Install via Copr?"; then
@@ -211,7 +217,9 @@ elif [ "$PM" = "dnf" ]; then
     fi
 elif prompt "kwin-rounded-corners" "Rounded corners KWin effect" "Build from GitHub? (https://github.com/matinlotfali/KDE-Rounded-Corners.git)"; then
     git_clone "KDE-Rounded-Corners" "https://github.com/matinlotfali/KDE-Rounded-Corners.git"
-    [ "$TEST" = false ] && echo "  See repo for build/install instructions."
+    if [ "$TEST" = false ] && [ -d "KDE-Rounded-Corners" ]; then
+        safe_cd "KDE-Rounded-Corners" && echo "  See repo for build/install instructions." || true
+    fi
 fi
 
 # --- CachyOS-Emerald-KDE ---
