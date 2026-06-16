@@ -295,7 +295,7 @@ fi
 # --- We10X ---
 if check_we10x; then
     type_text "  We10X"; printf ' \033[32m✓\033[0m\n'
-elif prompt "we10x" "Windows 11 style GTK theme" "Install from GitHub? (recommended)"; then
+elif prompt "we10x" "Windows 11 style GTK theme" "Install from GitHub (recommended)"; then
     git_clone "We10X-gtk-theme" "https://github.com/yeyushengfan258/We10X-gtk-theme.git"
     if [ "$TEST" = true ]; then
         echo "  [test] would run: ./We10X-gtk-theme/install.sh -t grey -c dark -s compact -i arch --tweaks float round blur noborder"
