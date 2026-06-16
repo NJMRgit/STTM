@@ -31,7 +31,7 @@ apply() {
 type_text() {
     str="$1"
     while [ -n "$str" ]; do
-        c=$(printf '%s' "$str" | sed 's/\(.\.*/\1/')
+        c=$(printf '%s' "$str" | sed 's/\(.\).*/\1/')
         printf '%s' "$c"
         str=$(printf '%s' "$str" | sed 's/.//')
         sleep 0.003
