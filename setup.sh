@@ -571,13 +571,13 @@ echo
 
 echo "  Note: The GUI can also be run as a portable app from the project"
 echo "  directory with: python3 blur_gui.py --portable"
-if prompt_yn "Install Stoned Theme Manager to /opt/sttm?"; then
+if prompt_yn "Install Stoned Theme Manager to ~/.local/bin?"; then
     echo "Installing STTM GUI..."
-    sudo mkdir -p /opt/sttm
+    mkdir -p "$HOME/.local/bin"
     SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
-    sudo cp "$SCRIPT_DIR/blur_gui.py" /opt/sttm/
-    sudo cp "$SCRIPT_DIR/blsw.sh" /opt/sttm/
-    sudo chmod +x /opt/sttm/blur_gui.py /opt/sttm/blsw.sh
+    cp "$SCRIPT_DIR/blur_gui.py" "$HOME/.local/bin/"
+    cp "$SCRIPT_DIR/blsw.sh" "$HOME/.local/bin/"
+    chmod +x "$HOME/.local/bin/blur_gui.py" "$HOME/.local/bin/blsw.sh"
 
     echo "Installing icon..."
     mkdir -p "$HOME/.local/share/icons/hicolor/256x256/apps"
@@ -595,7 +595,7 @@ if prompt_yn "Install Stoned Theme Manager to /opt/sttm?"; then
 Name=STTM
 GenericName=Stoned Theme Manager
 Comment=KDE theme manager with wallpaper-based color generation
-Exec=/opt/sttm/blur_gui.py
+Exec=$HOME/.local/bin/blur_gui.py
 Icon=sttm
 Terminal=false
 Type=Application
