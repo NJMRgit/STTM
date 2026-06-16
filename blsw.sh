@@ -105,8 +105,8 @@ if [ -z "$1" ]; then
 	printf '██████╔╝███████╗███████║╚███╔███╔╝\n'
 	printf '╚═════╝ ╚══════╝╚══════╝ ╚══╝╚══╝ \n'
 	printf '\033[0m'
-	printf '         Blur Switch\n'
-	printf '\033[2m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n'
+	printf '         Blur Switch - Stoned Theme Manager Control Script\n'
+	printf '\033[2m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n'
 	printf '\n'
 	printf 'usage:      %s auto        #sets mode according to time\n' "$scriptname"
 	printf '            %s morning     #sets mode to morning\n' "$scriptname"
