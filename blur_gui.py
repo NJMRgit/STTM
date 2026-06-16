@@ -124,6 +124,36 @@ class BlurSwitchManager(QMainWindow):
             ).exec()
             if reply != QMessageBox.StandardButton.Yes:
                 return
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Generate Colors")
+        dlg.setFixedSize(360, 160)
+        dlg.setStyleSheet("QDialog { background: #2a2a2a; border-radius: 8px; }")
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
+        label = QLabel("How would you like to generate colors?")
+        label.setStyleSheet("color: #eee; font-size: 13px;")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(label)
+        btn_wp = QPushButton("Generate from Wallpaper")
+        btn_wp.setStyleSheet(self._btn_style(100, 140, 220, 4))
+        btn_wp.clicked.connect(dlg.accept)
+        layout.addWidget(btn_wp)
+        btn_pick = QPushButton("Pick a Color")
+        btn_pick.setStyleSheet(self._btn_style(140, 100, 220, 4))
+        btn_pick.clicked.connect(lambda: dlg.done(2))
+        layout.addWidget(btn_pick)
+        choice = dlg.exec()
+        if choice == 2:
+            c = QColorDialog.getColor()
+            if not c.isValid():
+                return
+            r, g, b = c.red(), c.green(), c.blue()
+            dominant = f"{r:02x}{g:02x}{b:02x}"
+            self._apply_generated_colors({"primary_container": dominant}, mode)
+            return
+        if choice != QDialog.DialogCode.Accepted:
+            return
         wallpaper = self.inp.get(f"{mode}_WALLPAPER", QLineEdit()).text().strip()
         if not wallpaper or not os.path.exists(wallpaper):
             msg = self._styled_msgbox(QMessageBox.Icon.Warning, "Error", "No wallpaper selected!"); msg.exec()
