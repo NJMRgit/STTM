@@ -574,21 +574,54 @@ echo
 
 echo "  Note: The GUI can also be run as a portable app from the project"
 echo "  directory with: python3 blur_gui.py --portable"
+fetch_file() {
+    dest="$1"
+    url="$2"
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "$url" -o "$dest"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q "$url" -O "$dest"
+    else
+        return 1
+    fi
+}
+
 if prompt_yn "Install Stoned Theme Manager to ~/.local/bin?"; then
     echo "Installing STTM GUI..."
     mkdir -p "$HOME/.local/bin"
     SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
-    cp "$SCRIPT_DIR/blur_gui.py" "$HOME/.local/bin/"
-    cp "$SCRIPT_DIR/blsw.sh" "$HOME/.local/bin/"
-    chmod +x "$HOME/.local/bin/blur_gui.py" "$HOME/.local/bin/blsw.sh"
+    if [ -f "$SCRIPT_DIR/blur_gui.py" ]; then
+        cp "$SCRIPT_DIR/blur_gui.py" "$HOME/.local/bin/"
+    elif [ -n "$STTM_RAWBASE" ] && fetch_file "$HOME/.local/bin/blur_gui.py" "$STTM_RAWBASE/blur_gui.py"; then
+        :
+    else
+        echo "  Warning: blur_gui.py not found, skipping."
+    fi
+    if [ -f "$SCRIPT_DIR/blsw.sh" ]; then
+        cp "$SCRIPT_DIR/blsw.sh" "$HOME/.local/bin/"
+    elif [ -n "$STTM_RAWBASE" ] && fetch_file "$HOME/.local/bin/blsw.sh" "$STTM_RAWBASE/blsw.sh"; then
+        :
+    else
+        echo "  Warning: blsw.sh not found, skipping."
+    fi
+    chmod +x "$HOME/.local/bin/blur_gui.py" "$HOME/.local/bin/blsw.sh" 2>/dev/null || true
 
     echo "Installing icon..."
     mkdir -p "$HOME/.local/share/icons/hicolor/256x256/apps"
-    if command -v convert >/dev/null 2>&1; then
-        convert "$SCRIPT_DIR/icon.png" -resize 256x256 "$HOME/.local/share/icons/hicolor/256x256/apps/sttm.png"
+    icon_src=""
+    if [ -f "$SCRIPT_DIR/icon.png" ]; then
+        icon_src="$SCRIPT_DIR/icon.png"
+    elif [ -n "$STTM_RAWBASE" ]; then
+        fetch_file "/tmp/sttm-icon.png" "$STTM_RAWBASE/icon.png" && icon_src="/tmp/sttm-icon.png"
+    fi
+    if [ -n "$icon_src" ]; then
+        if command -v convert >/dev/null 2>&1; then
+            convert "$icon_src" -resize 256x256 "$HOME/.local/share/icons/hicolor/256x256/apps/sttm.png"
+        else
+            cp "$icon_src" "$HOME/.local/share/icons/hicolor/256x256/apps/sttm.png"
+        fi
     else
-        echo "  ImageMagick not found, skipping icon resize."
-        cp "$SCRIPT_DIR/icon.png" "$HOME/.local/share/icons/hicolor/256x256/apps/sttm.png" 2>/dev/null || echo "  Warning: icon.png not found."
+        echo "  Warning: icon.png not found, skipping."
     fi
 
     echo "Creating desktop entry..."

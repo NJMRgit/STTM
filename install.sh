@@ -334,7 +334,7 @@ elif fetch_file "/tmp/sttm-setup.sh" "$RAWBASE/setup.sh"; then
 fi
 
 if [ -n "$SETUP_SCRIPT" ] && prompt "First Time Setup" "Configure KDE theme, glass effect, and rounded corners?" "Run first-time setup?"; then
-    sh "$SETUP_SCRIPT"
+    STTM_RAWBASE="$RAWBASE" sh "$SETUP_SCRIPT"
 fi
 
 echo
