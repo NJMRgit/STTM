@@ -5,7 +5,7 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 ## Features
 
 ### Customization Options
-- **Wallpaper** — set a different wallpaper
+- **Wallpaper** — Per-theme wallpaper
 - **Glass Tint** — Glass tint color 
 - **Outline Colors** — rounded-corners outline (active + inactive) 
 - **Shadow Colors** — rounded-corners shadow (active + inactive)
