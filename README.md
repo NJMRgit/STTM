@@ -4,8 +4,11 @@
 
 KDE Plasma theme manager with time-based mode switching. Automatically adjusts wallpaper, window glass tint, rounded-corners outline/shadow colors, fastfetch logo, and OpenRGB lighting profiles based on the time of day.
 
-<img width="4096" height="2304" alt="merged-right-5-images" src="https://github.com/user-attachments/assets/aed65dbf-1165-4dd5-a5ec-595c9904cf29" />
-
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/aed65dbf-1165-4dd5-a5ec-595c9904cf29">
+  <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/aed65dbf-1165-4dd5-a5ec-595c9904cf29">
+  <img alt="Project Logo" src="https://github.com/user-attachments/assets/aed65dbf-1165-4dd5-a5ec-595c9904cf29">
+</picture>
 
 ## Features
 
