@@ -24,9 +24,9 @@ fetch_file() {
     dest="$1"
     url="$2"
     if command -v curl >/dev/null 2>&1; then
-        curl -fsSL "$url" -o "$dest"
+        curl -fsSL "$url" -o "$dest" 2>/dev/null
     elif command -v wget >/dev/null 2>&1; then
-        wget -q "$url" -O "$dest"
+        wget -q "$url" -O "$dest" 2>/dev/null
     else
         return 1
     fi
@@ -309,30 +309,193 @@ mkdir -p "$HOME/.local/share/color-schemes"
 if check_glassd; then
     type_text "  glassd color scheme"; printf ' \033[32m✓\033[0m\n'
 else
-    SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
-    if [ -f "$SCRIPT_DIR/glassd.colors" ]; then
-        cp "$SCRIPT_DIR/glassd.colors" "$HOME/.local/share/color-schemes/glassd.colors"
-        printf "  Installed glassd color scheme."
-        group_open=true; close_group
-    elif fetch_file "/tmp/glassd.colors" "$RAWBASE/glassd.colors"; then
-        cp "/tmp/glassd.colors" "$HOME/.local/share/color-schemes/glassd.colors"
-        printf "  Installed glassd color scheme."
-        group_open=true; close_group
-    else
-        echo "  Warning: could not fetch glassd.colors."
-    fi
+    echo "  Creating glassd color scheme..."
+    
+    # Create the color scheme file directly
+    cat > "$HOME/.local/share/color-schemes/glassd.colors" << 'EOF'
+[ColorEffects:Disabled]
+Color=23,23,23
+ColorAmount=0
+ColorEffect=0
+ContrastAmount=0.65
+ContrastEffect=1
+IntensityAmount=0.1
+IntensityEffect=2
+
+[ColorEffects:Inactive]
+ChangeSelectionColor=false
+Color=112,111,110
+ColorAmount=0.025
+ColorEffect=2
+ContrastAmount=0.1
+ContrastEffect=2
+Enable=false
+IntensityAmount=0
+IntensityEffect=0
+
+[Colors:Button]
+BackgroundAlternate=105,105,105
+BackgroundNormal=0,0,0,45
+DecorationFocus=0,109,12,60
+DecorationHover=175,175,175
+ForegroundActive=120,120,120
+ForegroundInactive=102,106,115
+ForegroundLink=41,128,185
+ForegroundNegative=41,189,13
+ForegroundNeutral=255,106,0
+ForegroundNormal=195,199,209
+ForegroundPositive=113,247,159
+ForegroundVisited=69,40,134
+
+[Colors:Complementary]
+BackgroundAlternate=93,93,93
+BackgroundNormal=93,93,93
+DecorationFocus=82,82,82
+DecorationHover=90,90,90,150
+ForegroundActive=120,120,120
+ForegroundInactive=174,181,196
+ForegroundLink=41,128,185
+ForegroundNegative=41,189,13
+ForegroundNeutral=255,106,0
+ForegroundNormal=211,218,227
+ForegroundPositive=113,247,159
+ForegroundVisited=179,13,191
+
+[Colors:Header]
+BackgroundAlternate=29,31,34
+BackgroundNormal=20,22,24,20
+DecorationFocus=120,120,120,
+DecorationHover=90,90,90,150
+ForegroundActive=120,120,120
+ForegroundInactive=161,169,177
+ForegroundLink=29,153,243
+ForegroundNegative=218,68,83
+ForegroundNeutral=246,116,0
+ForegroundNormal=200,200,200
+ForegroundPositive=39,174,96
+ForegroundVisited=155,89,182
+
+[Colors:Header][Inactive]
+BackgroundAlternate=29,31,34
+BackgroundNormal=20,22,24,20
+DecorationFocus=120,120,120
+DecorationHover=90,90,90,150
+ForegroundActive=120,120,120
+ForegroundInactive=161,169,177
+ForegroundLink=29,153,243
+ForegroundNegative=218,68,83
+ForegroundNeutral=246,116,0
+ForegroundNormal=252,252,252
+ForegroundPositive=39,174,96
+ForegroundVisited=155,89,182
+
+[Colors:Selection]
+BackgroundAlternate=116,116,116,155
+BackgroundNormal=50,50,50,85
+DecorationFocus=66,14,210
+DecorationHover=66,14,210
+ForegroundActive=252,252,252
+ForegroundInactive=211,218,227
+ForegroundLink=253,188,75
+ForegroundNegative=41,189,13
+ForegroundNeutral=255,106,0
+ForegroundNormal=225,225,225
+ForegroundPositive=113,247,159
+ForegroundVisited=189,195,199
+
+[Colors:Tooltip]
+BackgroundAlternate=30,32,36
+BackgroundNormal=90,90,90,150
+DecorationFocus=0,72,82
+DecorationHover=0,144,20
+ForegroundActive=120,120,120
+ForegroundInactive=174,181,196
+ForegroundLink=41,128,185
+ForegroundNegative=41,189,13
+ForegroundNeutral=255,106,0
+ForegroundNormal=211,218,227
+ForegroundPositive=113,247,159
+ForegroundVisited=37,22,75
+
+[Colors:View]
+BackgroundAlternate=29,31,34,32
+BackgroundNormal=35,35,35,1
+DecorationFocus=0,0,0,45
+DecorationHover=90,90,90,150
+ForegroundActive=255,255,255,0
+ForegroundInactive=161,169,177
+ForegroundLink=29,153,243
+ForegroundNegative=218,68,83
+ForegroundNeutral=246,116,0
+ForegroundNormal=240,240,240
+ForegroundPositive=39,174,96
+ForegroundVisited=155,89,182
+
+[Colors:Window]
+BackgroundAlternate=41,44,48
+BackgroundNormal=35,35,35,1
+DecorationFocus=200,200,200
+DecorationHover=90,90,90,150
+ForegroundActive=0,0,0,20
+ForegroundInactive=161,169,177
+ForegroundLink=29,153,243
+ForegroundNegative=218,68,83
+ForegroundNeutral=246,116,0
+ForegroundNormal=252,252,252
+ForegroundPositive=39,174,96
+ForegroundVisited=155,89,182
+
+[General]
+ColorScheme=Glass'd
+Name=Glass'd
+shadeSortColumn=true
+
+[KDE]
+contrast=4
+
+[WM]
+activeBackground=0,81,93,80
+activeBlend=255,255,255
+activeForeground=211,211,211
+inactiveBackground=0,81,93,125
+inactiveBlend=120,120,120
+inactiveForeground=120,120,120
+EOF
+    
+    printf "  Installed glassd color scheme."
+    group_open=true; close_group
 fi
+
+# --- First Time Setup ---
+echo
+type_text "--- First Time Setup ---"; echo
 
 SETUP_SCRIPT=""
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+
+# Check for local setup script first
 if [ -f "$SCRIPT_DIR/setup" ]; then
     SETUP_SCRIPT="$SCRIPT_DIR/setup"
-elif fetch_file "/tmp/sttm-setup.sh" "$RAWBASE/setup.sh"; then
-    SETUP_SCRIPT="/tmp/sttm-setup.sh"
+elif [ -f "$SCRIPT_DIR/setup.sh" ]; then
+    SETUP_SCRIPT="$SCRIPT_DIR/setup.sh"
 fi
 
-if [ -n "$SETUP_SCRIPT" ] && prompt "First Time Setup" "Configure KDE theme, glass effect, and rounded corners?" "Run first-time setup?"; then
+# If no local setup script, check if we should download one
+if [ -z "$SETUP_SCRIPT" ]; then
+    # Check if setup.sh exists in the repository
+    if curl -s -f -I "https://raw.githubusercontent.com/NJMRgit/STTM/main/setup.sh" >/dev/null 2>&1; then
+        if fetch_file "/tmp/sttm-setup.sh" "$RAWBASE/setup.sh"; then
+            SETUP_SCRIPT="/tmp/sttm-setup.sh"
+        fi
+    else
+        echo "  No setup script found in repository."
+        echo "  Skipping first-time setup."
+    fi
+fi
+
+if [ -n "$SETUP_SCRIPT" ] && [ -f "$SETUP_SCRIPT" ] && prompt "First Time Setup" "Configure KDE theme, glass effect, and rounded corners?" "Run first-time setup?"; then
     STTM_RAWBASE="$RAWBASE" sh "$SETUP_SCRIPT"
 fi
 
 echo
+echo "  Installation complete!"
