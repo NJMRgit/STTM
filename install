@@ -220,19 +220,10 @@ close_group; type_text "--- Items from GitHub / AUR / pipx ---"; echo
 # --- darkly ---
 if check_darkly; then
     type_text "  darkly"; printf '\033[32m✓\033[0m\n'
-elif [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then
-    if prompt "darkly" "Global dark theme for KDE/GTK" "Install from AUR via $AUR_HELPER?"; then
-        run_install "$AUR_HELPER" -S darkly-bin || true
-    fi
-elif [ "$PM" = "dnf" ]; then
-    if prompt "darkly" "Global dark theme for KDE/GTK" "Install via Copr?"; then
-        run_install sudo dnf copr enable deltacopy/darkly || true
-        run_install sudo dnf install darkly || true
-    fi
 elif prompt "darkly" "Global dark theme for KDE/GTK" "Build from GitHub? (https://github.com/Bali10050/Darkly.git)"; then
-    git_clone "Darkly" "https://github.com/Bali10050/Darkly.git"
+    git clone --single-branch --depth=1 https://github.com/Bali10050/Darkly.git
     if [ "$TEST" = false ] && [ -d "$CLONE_DIR/Darkly" ]; then
-        safe_cd "$CLONE_DIR/Darkly" && echo "  See README.md for build/install instructions." || true
+        safe_cd "$CLONE_DIR/Darkly" && ./install.sh" || true
     fi
 fi
 
@@ -251,7 +242,7 @@ elif [ "$PM" = "dnf" ]; then
 elif prompt "kwin-effects-glass" "Blur/glass KWin effect" "Build from GitHub? (https://github.com/4v3ngR/kwin-effects-glass.git)"; then
     git_clone "kwin-effects-glass" "https://github.com/4v3ngR/kwin-effects-glass.git"
     if [ "$TEST" = false ] && [ -d "$CLONE_DIR/kwin-effects-glass" ]; then
-        safe_cd "$CLONE_DIR/kwin-effects-glass" && echo "  See repo for build/install instructions." || true
+        safe_cd "$CLONE_DIR/kwin-effects-glass" && mkdir build && cd build && cmake .. -DCMAKE_INSTALL_PREFIX=/usr && make -j$(nproc) && sudo make install || true
     fi
 fi
 
@@ -270,7 +261,7 @@ elif [ "$PM" = "dnf" ]; then
 elif prompt "kwin-rounded-corners" "Rounded corners KWin effect" "Build from GitHub? (https://github.com/matinlotfali/KDE-Rounded-Corners.git)"; then
     git_clone "KDE-Rounded-Corners" "https://github.com/matinlotfali/KDE-Rounded-Corners.git"
     if [ "$TEST" = false ] && [ -d "$CLONE_DIR/KDE-Rounded-Corners" ]; then
-        safe_cd "$CLONE_DIR/KDE-Rounded-Corners" && echo "  See repo for build/install instructions." || true
+        safe_cd "$CLONE_DIR/KDE-Rounded-Corners" && mkdir build && cd build && cmake .. &&cmake --build . -j && sudo make install || true
     fi
 fi
 
