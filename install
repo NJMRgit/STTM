@@ -200,7 +200,7 @@ if [ -n "$MISSING" ]; then
     PKG_LIST=$(printf '%s\n' $MISSING | sed '/^$/d; s/^/  - /')
     if prompt "The following packages need to be installed:" "$PKG_LIST"; then
         # shellcheck disable=SC2086
-        run_install $INSTALL_CMD $MISSING
+        run_install $INSTALL_CMD $MISSING || true
     fi
 else
     echo "  All system packages already installed."
@@ -222,12 +222,12 @@ if check_darkly; then
     type_text "  darkly"; printf '\033[32m✓\033[0m\n'
 elif [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then
     if prompt "darkly" "Global dark theme for KDE/GTK" "Install from AUR via $AUR_HELPER?"; then
-        run_install "$AUR_HELPER" -S darkly-bin
+        run_install "$AUR_HELPER" -S darkly-bin || true
     fi
 elif [ "$PM" = "dnf" ]; then
     if prompt "darkly" "Global dark theme for KDE/GTK" "Install via Copr?"; then
-        run_install sudo dnf copr enable deltacopy/darkly
-        run_install sudo dnf install darkly
+        run_install sudo dnf copr enable deltacopy/darkly || true
+        run_install sudo dnf install darkly || true
     fi
 elif prompt "darkly" "Global dark theme for KDE/GTK" "Build from GitHub? (https://github.com/Bali10050/Darkly.git)"; then
     git_clone "Darkly" "https://github.com/Bali10050/Darkly.git"
@@ -241,12 +241,12 @@ if check_glass; then
     type_text "  kwin-effects-glass"; printf ' \033[32m✓\033[0m\n'
 elif [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then
     if prompt "kwin-effects-glass" "Blur/glass KWin effect" "Install from AUR via $AUR_HELPER?"; then
-        run_install "$AUR_HELPER" -S kwin-effects-glass-git
+        run_install "$AUR_HELPER" -S kwin-effects-glass-git || true
     fi
 elif [ "$PM" = "dnf" ]; then
     if prompt "kwin-effects-glass" "Blur/glass KWin effect" "Install via Copr?"; then
-        run_install sudo dnf copr enable ama1470/kwin-effects-glass
-        run_install sudo dnf install kwin-effects-glass
+        run_install sudo dnf copr enable ama1470/kwin-effects-glass || true
+        run_install sudo dnf install kwin-effects-glass || true
     fi
 elif prompt "kwin-effects-glass" "Blur/glass KWin effect" "Build from GitHub? (https://github.com/4v3ngR/kwin-effects-glass.git)"; then
     git_clone "kwin-effects-glass" "https://github.com/4v3ngR/kwin-effects-glass.git"
@@ -260,12 +260,12 @@ if check_rounded; then
     type_text "  kwin-rounded-corners"; printf ' \033[32m✓\033[0m\n'
 elif [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then
     if prompt "kwin-rounded-corners" "Rounded corners KWin effect" "Install from AUR via $AUR_HELPER?"; then
-        run_install "$AUR_HELPER" -S kwin-effect-rounded-corners-git
+        run_install "$AUR_HELPER" -S kwin-effect-rounded-corners-git || true
     fi
 elif [ "$PM" = "dnf" ]; then
     if prompt "kwin-rounded-corners" "Rounded corners KWin effect" "Install via Copr?"; then
-        run_install sudo dnf copr enable matinlotfali/KDE-Rounded-Corners
-        run_install sudo dnf install kwin-effect-roundcorners
+        run_install sudo dnf copr enable matinlotfali/KDE-Rounded-Corners || true
+        run_install sudo dnf install kwin-effect-roundcorners || true
     fi
 elif prompt "kwin-rounded-corners" "Rounded corners KWin effect" "Build from GitHub? (https://github.com/matinlotfali/KDE-Rounded-Corners.git)"; then
     git_clone "KDE-Rounded-Corners" "https://github.com/matinlotfali/KDE-Rounded-Corners.git"
