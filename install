@@ -227,23 +227,13 @@ elif prompt "darkly" "Global dark theme for KDE/GTK" "Build from GitHub? (https:
     fi
 fi
 
-# --- kwin-effects-glass ---
-if check_glass; then
-    type_text "  kwin-effects-glass"; printf ' \033[32m✓\033[0m\n'
-elif [ "$PM" = "pacman" ] && [ -n "$AUR_HELPER" ]; then
-    if prompt "kwin-effects-glass" "Blur/glass KWin effect" "Install from AUR via $AUR_HELPER?"; then
-        run_install "$AUR_HELPER" -S kwin-effects-glass-git || true
-    fi
-elif [ "$PM" = "dnf" ]; then
-    if prompt "kwin-effects-glass" "Blur/glass KWin effect" "Install via Copr?"; then
-        run_install sudo dnf copr enable ama1470/kwin-effects-glass || true
-        run_install sudo dnf install kwin-effects-glass || true
-    fi
-elif prompt "kwin-effects-glass" "Blur/glass KWin effect" "Build from GitHub? (https://github.com/4v3ngR/kwin-effects-glass.git)"; then
-    git_clone "kwin-effects-glass" "https://github.com/4v3ngR/kwin-effects-glass.git"
-    if [ "$TEST" = false ] && [ -d "$CLONE_DIR/kwin-effects-glass" ]; then
-        safe_cd "$CLONE_DIR/kwin-effects-glass" && mkdir build && cd build && cmake .. -DCMAKE_INSTALL_PREFIX=/usr && make -j$(nproc) && sudo make install || true
-    fi
+if [ "$TEST" = false ] && [ -d "$CLONE_DIR/kwin-effects-glass" ]; then
+    safe_cd "$CLONE_DIR/kwin-effects-glass" && 
+    mkdir -p build && 
+    cd build && 
+    cmake .. -DCMAKE_INSTALL_PREFIX=/usr && 
+    make -j"$(nproc 2>/dev/null || echo 1)" && 
+    sudo make install || true
 fi
 
 # --- KDE-Rounded-Corners ---
