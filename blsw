@@ -20,76 +20,53 @@ NIGHT_HOUR="21"
 # $TINT values need to be in hex w/ alpha (ex: #00112233)
 # OUTLINE_COLOR and SHADOW_COLOR need to be in RGB (ex: 225,225,225)
 #-------------------------------------------------------------------------------------------------#
-# morning mode settings
-MORNING_TINT="#37199054"
-MORNING_OUTLINE_COLOR_ACTIVE="42,151,78"
-MORNING_OUTLINE_COLOR_INACTIVE="23,84,43"
-MORNING_SHADOW_COLOR="42,151,78"
-MORNING_SHADOW_COLOR_INACTIVE=""
-MORNING_WALLPAPER="/mnt/d3aa8dda-f9b2-4b7b-93e5-d6e6dc53d43e/Media/Pictures/Backgrounds/348158.png"
-MORNING_FF_LOGO="/home/stoned/Documents/FFAscii/coffee.txt"
-MORNING_FF_LOGO_COLOR="#907C2A"
-MORNING_RGB="Morning"
-#-------------------------------------------------------------------------------------------------#
 #-------------------------------------------------------------------------------------------------#
 # noon mode settings
-NOON_TINT="#4BB4E1FF"
-NOON_OUTLINE_COLOR_ACTIVE="180,225,255"
-NOON_OUTLINE_COLOR_INACTIVE="118,147,167"
-NOON_SHADOW_COLOR="180,225,255"
-NOON_SHADOW_COLOR_INACTIVE=""
-NOON_WALLPAPER="/mnt/d3aa8dda-f9b2-4b7b-93e5-d6e6dc53d43e/Media/Pictures/Backgrounds/afternoonhike.jpg"
-NOON_FF_LOGO="/home/stoned/Documents/FFAscii/sun.txt"
-NOON_FF_LOGO_COLOR="#E5DD00"
-NOON_RGB="Noon"
+NOON_TINT=
+NOON_OUTLINE_COLOR_ACTIVE=
+NOON_OUTLINE_COLOR_INACTIVE=
+NOON_SHADOW_COLOR=
+NOON_SHADOW_COLOR_INACTIVE=
+NOON_WALLPAPER=
+NOON_FF_LOGO=
+NOON_FF_LOGO_COLOR=
+NOON_RGB=
 #-------------------------------------------------------------------------------------------------#
 #-------------------------------------------------------------------------------------------------#
 # afternoon mode settings
-AFTERNOON_TINT="#4BFFE770"
-AFTERNOON_OUTLINE_COLOR_ACTIVE="255,231,112"
-AFTERNOON_OUTLINE_COLOR_INACTIVE="172,154,76"
-AFTERNOON_SHADOW_COLOR="255,231,112"
-AFTERNOON_SHADOW_COLOR_INACTIVE=""
-AFTERNOON_WALLPAPER="/mnt/d3aa8dda-f9b2-4b7b-93e5-d6e6dc53d43e/Media/Pictures/Backgrounds/picnic.png"
-AFTERNOON_FF_LOGO="/home/stoned/Documents/FFAscii/lemonade.txt"
-AFTERNOON_FF_LOGO_COLOR="#ffe009"
-AFTERNOON_RGB="Afternoon"
+AFTERNOON_TINT=
+AFTERNOON_OUTLINE_COLOR_ACTIVE=
+AFTERNOON_OUTLINE_COLOR_INACTIVE=
+AFTERNOON_SHADOW_COLOR=
+AFTERNOON_SHADOW_COLOR_INACTIVE=
+AFTERNOON_WALLPAPER=
+AFTERNOON_FF_LOGO=
+AFTERNOON_FF_LOGO_COLOR=
+AFTERNOON_RGB=
 #-------------------------------------------------------------------------------------------------#
 #-------------------------------------------------------------------------------------------------#
 # evening mode settings
-EVENING_TINT="#44cc892c"
-EVENING_OUTLINE_COLOR_ACTIVE="225,170,60"
-EVENING_OUTLINE_COLOR_INACTIVE="168,112,22"
-EVENING_SHADOW_COLOR="255,193,70"
-EVENING_SHADOW_COLOR_INACTIVE=""
-EVENING_WALLPAPER="/mnt/d3aa8dda-f9b2-4b7b-93e5-d6e6dc53d43e/Media/Pictures/Backgrounds/SpicenWolf/135590972_p0.jpg"
-EVENING_FF_LOGO="/home/stoned/Documents/FFAscii/holo.txt"
-EVENING_FF_LOGO_COLOR="#ffbc50"
-EVENING_RGB="Evening"
+EVENING_TINT=
+EVENING_OUTLINE_COLOR_ACTIVE=
+EVENING_OUTLINE_COLOR_INACTIVE=
+EVENING_SHADOW_COLOR=
+EVENING_SHADOW_COLOR_INACTIVE=
+EVENING_WALLPAPER=
+EVENING_FF_LOGO=
+EVENING_FF_LOGO_COLOR=
+EVENING_RGB=
 #-------------------------------------------------------------------------------------------------#
 #-------------------------------------------------------------------------------------------------#
 # night mode settings
-NIGHT_TINT="#44007bd9"
-NIGHT_OUTLINE_COLOR_ACTIVE="0,177,217"
-NIGHT_OUTLINE_COLOR_INACTIVE="0,133,163"
-NIGHT_SHADOW_COLOR="0,177,217"
-NIGHT_SHADOW_COLOR_INACTIVE=""
-NIGHT_WALLPAPER="/mnt/d3aa8dda-f9b2-4b7b-93e5-d6e6dc53d43e/Media/Pictures/Backgrounds/wallhaven-qz691r.jpg"
-NIGHT_FF_LOGO="/home/stoned/Documents/FFAscii/ff420.txt"
-NIGHT_FF_LOGO_COLOR="#079f67"
-NIGHT_RGB="Night"
-#-------------------------------------------------------------------------------------------------#
-#-------------------------------------------------------------------------------------------------#
-# MONSTER mode settings
-MONSTER_TINT="#55aa0000"
-MONSTER_OUTLINE_COLOR_ACTIVE="#aa0000"
-MONSTER_OUTLINE_COLOR_INACTIVE="#530000"
-MONSTER_SHADOW_COLOR="#7e0000"
-MONSTER_SHADOW_COLOR_INACTIVE=""
-MONSTER_WALLPAPER="/mnt/d3aa8dda-f9b2-4b7b-93e5-d6e6dc53d43e/Media/Pictures/Backgrounds/8fd67eca-fff9-40a8-a5a7-c6b9d7376b30_rw_3840.jpg"
-MONSTER_FF_LOGO="/home/stoned/Documents/FFAscii/devil.txt"
-MONSTER_FF_LOGO_COLOR="#FF4B4B"
-MONSTER_RGB="Hell"
+NIGHT_TINT=
+NIGHT_OUTLINE_COLOR_ACTIVE=
+NIGHT_OUTLINE_COLOR_INACTIVE=
+NIGHT_SHADOW_COLOR=
+NIGHT_SHADOW_COLOR_INACTIVE=
+NIGHT_WALLPAPER=
+NIGHT_FF_LOGO=
+NIGHT_FF_LOGO_COLOR=
+NIGHT_RGB=
 #-------------------------------------------------------------------------------------------------#
 
 #get time
