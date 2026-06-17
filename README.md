@@ -63,7 +63,7 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 
 ## How to install 
 
-- Run `curl -fsSL "https://raw.githubusercontent.com/NJMRgit/STTM/main/install.sh?" | sh` and follow prompts
+- Run `curl -fsSL "https://raw.githubusercontent.com/NJMRgit/STTM/main/install" | sh` and follow prompts
 
 ## Requirements
 
