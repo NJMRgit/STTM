@@ -10,11 +10,12 @@ for arg in "$@"; do
 done
 
 TMPDIR=""
+CLONE_DIR=""
 RAWBASE="https://raw.githubusercontent.com/NJMRgit/STTM/main"
 
 cleanup() {
-    if [ "$TEST" = true ] && [ -n "$TMPDIR" ]; then
-        rm -rf "$TMPDIR"
+    if [ -n "$CLONE_DIR" ] && [ -d "$CLONE_DIR" ]; then
+        rm -rf "$CLONE_DIR"
     fi
 }
 trap cleanup EXIT
@@ -63,20 +64,13 @@ safe_cd() {
 }
 
 git_clone() {
-    dest="$1"
+    dest="$CLONE_DIR/$1"
     repo="$2"
     if [ "$TEST" = true ]; then
-        dest="$TMPDIR/$dest"
         echo "  [test] cloning $repo -> $dest"
-        mkdir -p "$dest"
-        git clone --depth=1 "$repo" "$dest" >/dev/null 2>&1 || echo "  [test] clone skipped (network)"
-        return 0
     fi
-    if [ -d "$dest" ]; then
-        echo "  $dest already exists, skipping clone."
-    else
-        git clone "$repo" "$dest" || echo "  Warning: clone failed (check network). You may need to clone manually."
-    fi
+    mkdir -p "$dest"
+    git clone "$repo" "$dest" >/dev/null 2>&1 || echo "  Warning: clone failed (check network). You may need to clone manually."
 }
 
 group_open=false
@@ -148,8 +142,10 @@ echo
 PM=$(detect_pm)
 echo "Detected package manager: $PM"
 
+# Create temporary directory for all cloned repos
+CLONE_DIR=$(mktemp -d)
+
 if [ "$TEST" = true ]; then
-    TMPDIR=$(mktemp -d)
     echo "Test mode — no files will be installed"
 fi
 
@@ -235,8 +231,8 @@ elif [ "$PM" = "dnf" ]; then
     fi
 elif prompt "darkly" "Global dark theme for KDE/GTK" "Build from GitHub? (https://github.com/Bali10050/Darkly.git)"; then
     git_clone "Darkly" "https://github.com/Bali10050/Darkly.git"
-    if [ "$TEST" = false ] && [ -d "Darkly" ]; then
-        safe_cd "Darkly" && echo "  See README.md for build/install instructions." || true
+    if [ "$TEST" = false ] && [ -d "$CLONE_DIR/Darkly" ]; then
+        safe_cd "$CLONE_DIR/Darkly" && echo "  See README.md for build/install instructions." || true
     fi
 fi
 
@@ -254,8 +250,8 @@ elif [ "$PM" = "dnf" ]; then
     fi
 elif prompt "kwin-effects-glass" "Blur/glass KWin effect" "Build from GitHub? (https://github.com/4v3ngR/kwin-effects-glass.git)"; then
     git_clone "kwin-effects-glass" "https://github.com/4v3ngR/kwin-effects-glass.git"
-    if [ "$TEST" = false ] && [ -d "kwin-effects-glass" ]; then
-        safe_cd "kwin-effects-glass" && echo "  See repo for build/install instructions." || true
+    if [ "$TEST" = false ] && [ -d "$CLONE_DIR/kwin-effects-glass" ]; then
+        safe_cd "$CLONE_DIR/kwin-effects-glass" && echo "  See repo for build/install instructions." || true
     fi
 fi
 
@@ -273,8 +269,8 @@ elif [ "$PM" = "dnf" ]; then
     fi
 elif prompt "kwin-rounded-corners" "Rounded corners KWin effect" "Build from GitHub? (https://github.com/matinlotfali/KDE-Rounded-Corners.git)"; then
     git_clone "KDE-Rounded-Corners" "https://github.com/matinlotfali/KDE-Rounded-Corners.git"
-    if [ "$TEST" = false ] && [ -d "KDE-Rounded-Corners" ]; then
-        safe_cd "KDE-Rounded-Corners" && echo "  See repo for build/install instructions." || true
+    if [ "$TEST" = false ] && [ -d "$CLONE_DIR/KDE-Rounded-Corners" ]; then
+        safe_cd "$CLONE_DIR/KDE-Rounded-Corners" && echo "  See repo for build/install instructions." || true
     fi
 fi
 
@@ -283,10 +279,10 @@ if check_emerald; then
     type_text "  CachyOS Emerald"; printf ' \033[32m✓\033[0m\n'
 elif prompt "cachyos-emerald" "CachyOS Emerald Plasma theme" "Install from GitHub?"; then
     git_clone "CachyOS-Emerald-KDE" "https://github.com/CachyOS/CachyOS-Emerald-KDE.git"
-    if [ "$TEST" = false ] && [ -d "CachyOS-Emerald-KDE/plasma" ]; then
+    if [ "$TEST" = false ] && [ -d "$CLONE_DIR/CachyOS-Emerald-KDE/plasma" ]; then
         plasmadir="$HOME/.local/share/plasma"
         mkdir -p "$plasmadir"
-        cp -r "CachyOS-Emerald-KDE/plasma"/* "$plasmadir/" 2>/dev/null
+        cp -r "$CLONE_DIR/CachyOS-Emerald-KDE/plasma"/* "$plasmadir/" 2>/dev/null
         printf "  Installed CachyOS Emerald plasma theme."
         group_open=true; close_group
     fi
@@ -299,8 +295,8 @@ elif prompt "we10x" "Windows 11 style GTK theme" "Install from GitHub (recommend
     git_clone "We10X-gtk-theme" "https://github.com/yeyushengfan258/We10X-gtk-theme.git"
     if [ "$TEST" = true ]; then
         echo "  [test] would run: ./We10X-gtk-theme/install.sh -t grey -c dark -s compact -i arch --tweaks float round blur noborder"
-    elif [ -d "We10X-gtk-theme" ]; then
-        (cd We10X-gtk-theme && ./install.sh -t grey -c dark -s compact -i arch --tweaks float round blur noborder) || echo "  Warning: We10X install failed."
+    elif [ -d "$CLONE_DIR/We10X-gtk-theme" ]; then
+        (cd "$CLONE_DIR/We10X-gtk-theme" && ./install.sh -t grey -c dark -s compact -i arch --tweaks float round blur noborder) || echo "  Warning: We10X install failed."
     fi
 fi
 
