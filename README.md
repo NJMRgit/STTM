@@ -82,15 +82,15 @@ python3 sttm
 python3 sttm --portable
 ```
 
-The backend script can also be called directly:
+The backend script can also be called directly if installed to ~/.local:
 
 ```
-./blsw auto        # Apply mode based on current time
-./blsw morning     # Force a specific mode
-./blsw noon
-./blsw afternoon
-./blsw evening
-./blsw night
+blsw auto        # Apply mode based on current time
+blsw morning     # Force a specific mode
+blsw noon
+blsw afternoon
+blsw evening
+blsw night
 ```
 
 ## Quick Install
