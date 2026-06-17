@@ -38,16 +38,16 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 
 ### Portable Config
 - Default config stored at `~/.config/sttm/sttm.conf`
-- Launch with `--portable` to use local config (saved alongside `blur_gui.py`)
+- Launch with `--portable` to use local config (saved alongside `sttm`)
 - Schedule file: `~/.blur-schedule` by default, `.blur-schedule` in local dir with `--portable`
-- Auto-detects `blsw.sh` next to the GUI in portable mode
+- Auto-detects `blsw` next to the GUI in portable mode
 
 ### First-Time Setup
-- `setup.sh` — interactive ASCII-art installer that configures KDE with the necessary theme elements
+- `setup` — interactive ASCII-art installer that configures KDE with the necessary theme elements
 - Description of each change
 
 ### Automated Installer
-- `install.sh` — dependency installer with distro detection (pacman/apt/dnf)
+- `install` — dependency installer with distro detection (pacman/apt/dnf)
 - Handles AUR packages via detected helper (yay, paru, trizen, pikaur, pacaur)
 
 - Installs Darkly, We10X, kwin-effects-glass, KDE-Rounded-Corners, CachyOS-Emerald-KDE
@@ -78,29 +78,29 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 ## Usage
 
 ```
-python3 blur_gui.py
-python3 blur_gui.py --portable
+python3 sttm
+python3 sttm --portable
 ```
 
 The backend script can also be called directly:
 
 ```
-./blsw.sh auto        # Apply mode based on current time
-./blsw.sh morning     # Force a specific mode
-./blsw.sh noon
-./blsw.sh afternoon
-./blsw.sh evening
-./blsw.sh night
+./blsw auto        # Apply mode based on current time
+./blsw morning     # Force a specific mode
+./blsw noon
+./blsw afternoon
+./blsw evening
+./blsw night
 ```
 
 ## Quick Install
 
 ```bash
 # Automated dependency installer (run first)
-./install.sh
+./install
 
 # First-time KDE theme setup
-./setup.sh
+./setup
 ```
 ## Tips
 
