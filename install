@@ -327,8 +327,8 @@ fi
 
 SETUP_SCRIPT=""
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
-if [ -f "$SCRIPT_DIR/setup.sh" ]; then
-    SETUP_SCRIPT="$SCRIPT_DIR/setup.sh"
+if [ -f "$SCRIPT_DIR/setup" ]; then
+    SETUP_SCRIPT="$SCRIPT_DIR/setup"
 elif fetch_file "/tmp/sttm-setup.sh" "$RAWBASE/setup.sh"; then
     SETUP_SCRIPT="/tmp/sttm-setup.sh"
 fi

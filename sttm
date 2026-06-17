@@ -230,7 +230,7 @@ class BlurSwitchManager(QMainWindow):
             except: pass
             return self._script_error("Script is malformed")
         if PORTABLE:
-            auto = os.path.join(SCRIPT_DIR, "blsw.sh")
+            auto = os.path.join(SCRIPT_DIR, "blsw")
             if os.path.exists(auto):
                 with open(CONFIG_FILE,"w") as f: f.write(f'SCRIPT_PATH="{auto}"\n')
                 return auto
@@ -354,7 +354,7 @@ class BlurSwitchManager(QMainWindow):
     def _cron_installed(self):
         if self._scheduler != "cron": return False
         r = subprocess.run(["crontab","-l"], capture_output=True, text=True)
-        return "blsw.sh" in r.stdout
+        return "blsw" in r.stdout
 
     def _timer_status(self):
         if self._scheduler == "systemd":
@@ -636,7 +636,7 @@ class BlurSwitchManager(QMainWindow):
             cron_line = f"0 * * * * \"{self.script}\" auto"
             r = subprocess.run(["crontab","-l"], capture_output=True, text=True)
             existing = r.stdout
-            if "blsw.sh" not in existing:
+            if "blsw" not in existing:
                 if existing and not existing.endswith("\n"):
                     existing += "\n"
                 existing += cron_line + "\n"
@@ -702,7 +702,7 @@ class BlurSwitchManager(QMainWindow):
                     subprocess.run(cmd)
             elif self._scheduler == "cron":
                 r = subprocess.run(["crontab","-l"], capture_output=True, text=True)
-                lines = [l for l in r.stdout.splitlines() if "blsw.sh" not in l]
+                lines = [l for l in r.stdout.splitlines() if "blsw" not in l]
                 new = "\n".join(lines) + ("\n" if lines else "")
                 subprocess.run(["crontab","-"], input=new, capture_output=True, text=True)
         except Exception as e:
