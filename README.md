@@ -110,11 +110,11 @@ The backend script can also be called directly:
 
 | File | Purpose |
 |---|---|
-| `blur_gui.py` | PyQt6 GUI application |
-| `blsw.sh` | Backend shell script that applies mode settings |
+| `sttm` | PyQt6 GUI application |
+| `blsw` | Backend shell script that applies mode settings |
 | `sttm.conf` | Config file (stores path to `blsw.sh`) |
-| `install.sh` | Automated dependency installer with distro detection |
-| `setup.sh` | First-time KDE theme setup with interactive prompts |
+| `install` | Automated dependency installer with distro detection |
+| `setup` | First-time KDE theme setup with interactive prompts |
 | `icon.png` | Application icon for desktop entry |
 | `.blur-schedule` | Stores the last active mode (auto-generated) |
 
