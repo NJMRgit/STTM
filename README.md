@@ -23,7 +23,7 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 
 
 ### Automatic Color Generation
-- Generates tint/shadow/outline colors from the dominant wallpaper colors when adding wallpaper to a new theme
+- Generates tint/shadow/outline colors from chosen color or wallpaper
 
 ### Time-Based Modes
 - Five default modes: **Morning**, **Noon**, **Afternoon**, **Evening**, **Night**
