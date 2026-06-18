@@ -66,7 +66,12 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 
 ## How to install 
 
-- Run `curl -fsSL "https://raw.githubusercontent.com/NJMRgit/STTM/main/install" | sh` and follow prompts
+```bash
+curl -fsSL -o install.sh "https://raw.githubusercontent.com/NJMRgit/STTM/main/install"
+curl -fsSL -o install.sha256 "https://raw.githubusercontent.com/NJMRgit/STTM/main/install.sha256"
+sha256sum -c install.sha256 --ignore-missing
+sh install.sh
+```
 
 ## Requirements
 
@@ -115,9 +120,10 @@ blsw night
 |---|---|
 | `sttm` | PyQt6 GUI application |
 | `blsw` | Backend shell script that applies mode settings |
-| `sttm.conf` | Config file (stores path to `blsw.sh`) |
+| `sttm.conf` | Config file (stores path to `blsw`) |
 | `install` | Automated dependency installer with distro detection |
 | `setup` | First-time KDE theme setup with interactive prompts |
+| `install.sha256` | SHA256 checksum for install script verification |
 | `icon.png` | Application icon for desktop entry |
 | `.blur-schedule` | Stores the last active mode (auto-generated) |
 
