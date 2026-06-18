@@ -21,6 +21,18 @@ NIGHT_HOUR="21"
 # OUTLINE_COLOR and SHADOW_COLOR need to be in RGB (ex: 225,225,225)
 #-------------------------------------------------------------------------------------------------#
 #-------------------------------------------------------------------------------------------------#
+# morning mode settings
+MORNING_TINT=
+MORNING_OUTLINE_COLOR_ACTIVE=
+MORNING_OUTLINE_COLOR_INACTIVE=
+MORNING_SHADOW_COLOR=
+MORNING_SHADOW_COLOR_INACTIVE=
+MORNING_WALLPAPER=
+MORNING_FF_LOGO=
+MORNING_FF_LOGO_COLOR=
+MORNING_RGB=
+#-------------------------------------------------------------------------------------------------#
+#-------------------------------------------------------------------------------------------------#
 # noon mode settings
 NOON_TINT=
 NOON_OUTLINE_COLOR_ACTIVE=
