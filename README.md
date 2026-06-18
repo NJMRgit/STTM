@@ -67,7 +67,10 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 ## How to install 
 
 ```bash
-curl -fsSL -o install "https://raw.githubusercontent.com/NJMRgit/STTM/main/install" && curl -fsSL -o install.sha256 "https://raw.githubusercontent.com/NJMRgit/STTM/main/install.sha256" && sha256sum -c install.sha256 --ignore-missing && sh install
+curl -fsSL -o install "https://raw.githubusercontent.com/NJMRgit/STTM/main/install" && sh install
+```
+
+The script verifies its own integrity against the GitHub API before running.
 ```
 
 ## Requirements

@@ -22,7 +22,7 @@ fi
 
 # --- Integrity check ---
 if command -v sha256sum >/dev/null 2>&1; then
-    EXPECTED=$(curl -fsSL "$RAWBASE/install.sha256" 2>/dev/null || echo "")
+    EXPECTED=$(curl -fsSL "https://api.github.com/repos/NJMRgit/STTM/contents/install.sha256" 2>/dev/null | grep '"content"' | sed 's/.*"content": "\(.*\)",/\1/' | awk '{gsub(/\\n/,""); print}' | base64 -d 2>/dev/null | awk '{print $1}')
     if [ -n "$EXPECTED" ]; then
         ACTUAL=$(sha256sum "$0" | cut -d' ' -f1)
         if [ "$ACTUAL" != "$EXPECTED" ]; then
