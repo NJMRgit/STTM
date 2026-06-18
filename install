@@ -175,7 +175,7 @@ fi
 
 case "$PM" in
     pacman)
-        BASE="python-pyqt6 plasma-workspace qt6-tools python-pillow openrgb $CRON_PKG"
+        BASE="python-pyqt6 plasma-workspace qt6-tools python-pillow openrgb extra-cmake-modules $CRON_PKG"
         INSTALL_CMD="sudo pacman -S --needed"
         AUR_HELPER=""
         for h in yay paru trizen pikaur pacaur; do
@@ -186,13 +186,13 @@ case "$PM" in
         done
         ;;
     apt)
-        BASE="python3-pyqt6 plasma-workspace qt6-base-dev-tools python3-pil $CRON_PKG"
+        BASE="python3-pyqt6 plasma-workspace qt6-base-dev-tools python3-pil extra-cmake-modules $CRON_PKG"
         INSTALL_CMD="sudo apt install"
         AUR_HELPER=""
         EXTRA_APT="openrgb"
         ;;
     dnf)
-        BASE="python3-pyqt6 plasma-workspace qt6-qtbase-tools python3-pillow $CRON_PKG"
+        BASE="python3-pyqt6 plasma-workspace qt6-qtbase-tools python3-pillow extra-cmake-modules $CRON_PKG"
         INSTALL_CMD="sudo dnf install"
         AUR_HELPER=""
         EXTRA_DNF="openrgb"
