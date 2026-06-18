@@ -71,7 +71,7 @@ curl -fsSL -o install "https://raw.githubusercontent.com/NJMRgit/STTM/main/insta
 ```
 
 The script verifies its own integrity against the GitHub API before running.
-```
+
 
 ## Requirements
 
@@ -86,9 +86,11 @@ The script verifies its own integrity against the GitHub API before running.
 ## Usage
 
 ```
-python3 sttm
-python3 sttm --portable
+sttm
+sttm --portable
 ```
+
+Or launch the GUI from your app menu after install
 
 The backend script can also be called directly if installed to ~/.local:
 
@@ -101,15 +103,6 @@ blsw evening
 blsw night
 ```
 
-## Quick Install
-
-```bash
-# Automated dependency installer (run first)
-./install
-
-# First-time KDE theme setup
-./setup
-```
 ## Tips
 
 - Calling the script directly allows changing to a custom theme without disabling scheduled mode
