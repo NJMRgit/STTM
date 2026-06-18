@@ -40,7 +40,7 @@ type_text() {
 
 # Strip inline comment markers
 clean() {
-    echo "$1" | sed 's/[[:space:]]*#.*//' | sed 's/[[:space:]]*$//'
+    printf '%s\n' "$1" | sed 's/[[:space:]]*#.*//' | sed 's/[[:space:]]*$//'
 }
 
 printf '\033[36m'
@@ -118,11 +118,11 @@ while IFS= read -r line || [ -n "$line" ]; do
     # key=value
     case "$raw" in
         *=*)
-            key=$(echo "$raw" | sed 's/=.*//;s/[[:space:]]*$//')
-            val=$(echo "$raw" | sed 's/^[^=]*=//')
+            key=$(printf '%s\n' "$raw" | sed 's/=.*//;s/[[:space:]]*$//')
+            val=$(printf '%s\n' "$raw" | sed 's/^[^=]*=//')
 
             # --- animation prompt ---
-            if echo "$val" | grep -q "Prompt user for this change"; then
+            if printf '%s\n' "$val" | grep -q "Prompt user for this change"; then
                 if ! $do_anim; then
                     do_anim=true
                     if prompt_yn "Change animations? (May prevent flicker)"; then
@@ -134,7 +134,7 @@ while IFS= read -r line || [ -n "$line" ]; do
                 continue
             fi
 
-            if echo "$val" | grep -q "include as part of the previous prompt"; then
+            if printf '%s\n' "$val" | grep -q "include as part of the previous prompt"; then
                 if $anim_apply; then
                     v=$(clean "$val")
                     apply "$file" "$group" "$key" "$v"
@@ -143,7 +143,7 @@ while IFS= read -r line || [ -n "$line" ]; do
             fi
 
             # --- inactive shadow alpha prompt ---
-            if echo "$val" | grep -q "enable inactive shadows"; then
+            if printf '%s\n' "$val" | grep -q "enable inactive shadows"; then
                 printf "\n%s [y/N]: " "Enable inactive shadows? (not recommended)" >&2
                 read -r REPLY < /dev/tty
                 case "$REPLY" in
