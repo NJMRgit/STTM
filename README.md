@@ -1,4 +1,13 @@
-# Stoned Theme Manager
+# Stoned Theme Manager 
+
+<div align="right">
+            <a href="https://ko-fi.com/s7oned" target="_blank" style="display: inline-block;">
+                <img
+                    src="https://img.shields.io/badge/Donate-Ko--fi-F16061.svg?style=flat-square&logo=ko-fi" 
+                    align="right"
+                />
+            </a></div>
+
 
 KDE Plasma theme manager with time-based mode switching. Automatically adjusts wallpaper, window glass tint, rounded-corners outline/shadow colors, fastfetch logo, and OpenRGB lighting profiles based on the time of day.
 
