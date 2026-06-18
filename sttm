@@ -234,6 +234,10 @@ class BlurSwitchManager(QMainWindow):
             if os.path.exists(auto):
                 with open(CONFIG_FILE,"w") as f: f.write(f'SCRIPT_PATH="{auto}"\n')
                 return auto
+        auto = os.path.expanduser("~/.local/bin/blsw")
+        if os.path.exists(auto):
+            with open(CONFIG_FILE,"w") as f: f.write(f'SCRIPT_PATH="{auto}"\n')
+            return auto
         while True:
             msg = self._styled_msgbox(QMessageBox.Icon.Information, "Setup", "Select your blurswitch.sh script."); msg.exec()
             if p := QFileDialog.getOpenFileName(self, "Select script", os.path.expanduser("~"), "*.sh;;*")[0]:
