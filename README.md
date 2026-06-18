@@ -31,7 +31,7 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 - Auto mode: systemd timer or cron checks hourly and applies the correct mode
 
 ### Custom themes
-- Add custom themes to directly to script or with included GUI
+- Add custom themes directly to script or with included GUI
 - Enabling custom themes in GUI disables schedule mode 
 
 ### Partial Mode Application
