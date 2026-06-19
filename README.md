@@ -119,6 +119,8 @@ blsw night
 - If you want to disable titlebars disable them in here
  <img width="942" height="781" alt="image" src="https://github.com/user-attachments/assets/f486a424-c2b1-4334-81a8-e3a5c595be4d" />
 
+- Currently colors appear too bright/saturated in HDR if using KDE 6.7+ 
+
 
 ## Files
 
