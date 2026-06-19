@@ -85,7 +85,7 @@ The script verifies its own integrity against the GitHub API before running.
 ## Requirements
 
 - Python 3 + PyQt6
-- KDE Plasma 6.6.5
+- KDE Plasma 6+ (Tested working on 6.6.5 and 6.7)
 - `openrgb` (optional, for RGB lighting)
 - `systemctl --user` or `cronie` (for auto mode scheduling)
 - [Glass](https://github.com/4v3ngR/kwin-effects-glass)
