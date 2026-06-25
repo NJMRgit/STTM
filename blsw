@@ -237,7 +237,18 @@ if [ "$MODE_CHANGED" = true ]; then
 
     if [ "$INSIDE_YAKUAKE" = true ] || [ -n "$YAKUAKE_PTY" ]; then
         echo "Mode changed, waiting for programs to finish in Yakuake session..."
-        while ps -t "$YAKUAKE_PTY" -o comm= 2>/dev/null | grep -v -E '^(bash|zsh|fish|sh|dash|ksh|tcsh)$' | grep -q .; do
+        # Exclude this script and its children from the busy-process check
+        SCRIPT_NAME=$(basename "$0")
+        CHILD_PIDS=$(pgrep -P $$ 2>/dev/null | tr '\n' ' ')
+        EXCLUDE_PIDS="$$ $CHILD_PIDS"
+        while ps -t "$YAKUAKE_PTY" -o pid=,comm= 2>/dev/null | awk -v ex="$EXCLUDE_PIDS" -v sn="$SCRIPT_NAME" '
+            $2 ~ /^(bash|zsh|fish|sh|dash|ksh|tcsh)$/ { next }
+            { gsub(/^ +| +$/, "", $1) }
+            (" " ex " ") ~ (" " $1 " ") { next }
+            $2 == sn { next }
+            { found=1; exit }
+            END { exit !found }
+        '; do
             sleep 1
         done
         echo "Yakuake is idle, removing session for reload"

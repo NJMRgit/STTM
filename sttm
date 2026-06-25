@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import sys, re, os, subprocess, math, colorsys
+import sys, re, os, subprocess, math
 from datetime import datetime
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
@@ -16,10 +16,7 @@ else:
     SCHEDULE_FILE = os.path.expanduser("~/.blur-schedule")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "sttm.conf")
 
-STYLE = """
-    QPushButton {{ background: rgba({r},{g},{b},0.5); color: #fff; font-weight: bold; padding: {p}px; border: none; border-radius: 4px; }}
-    QPushButton:hover {{ background: rgba({r},{g},{b},0.7); }}
-"""
+
 
 MSG_BOX_STYLE = """
     QMessageBox {
@@ -114,7 +111,38 @@ class BlurSwitchManager(QMainWindow):
         return False
 
     def _generate_colors_from_wallpaper(self, mode, auto=False):
-        if self._has_colors(mode):
+        if not self._has_colors(mode):
+            # No colors set, generate automatically without prompt
+            wallpaper = self.inp.get(f"{mode}_WALLPAPER")
+            if wallpaper and wallpaper.text().strip() and os.path.exists(wallpaper.text().strip()):
+                try:
+                    img = Image.open(wallpaper.text().strip())
+                    img = img.resize((100, 100)).convert("RGB")
+                    pal = img.quantize(colors=5)
+                    palette = pal.getpalette()
+                    color_counts = pal.getcolors()
+                    if not color_counts:
+                        raise Exception("Could not extract colors from wallpaper")
+                    color_counts.sort(reverse=True, key=lambda x: x[0])
+                    dominant = None
+                    for count, idx in color_counts:
+                        r = palette[idx*3]; g = palette[idx*3+1]; b = palette[idx*3+2]
+                        if r < 40 and g < 40 and b < 40:
+                            continue
+                        if r > 220 and g > 220 and b > 220:
+                            continue
+                        dominant = f"{r:02x}{g:02x}{b:02x}"
+                        break
+                    if not dominant:
+                        cnt, idx = color_counts[0]
+                        r = palette[idx*3]; g = palette[idx*3+1]; b = palette[idx*3+2]
+                        dominant = f"{r:02x}{g:02x}{b:02x}"
+                    colors = {"primary_container": dominant}
+                    self._apply_generated_colors(colors, mode)
+                except Exception:
+                    pass
+            return
+        else:
             if auto:
                 return
             reply = self._styled_msgbox(
@@ -136,13 +164,10 @@ class BlurSwitchManager(QMainWindow):
         label = QLabel("<p style='text-align:center;'>How would you like to generate colors?</p>")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(label)
-        btn_style = "QPushButton { background-color: rgba(128,128,128,0.3); color: white; font-weight: bold; padding: 6px 16px; border: 1px solid rgba(128,128,128,0.4); border-radius: 4px; min-width: 200px; } QPushButton:hover { background-color: rgba(128,128,128,0.5); }"
         btn_wp = QPushButton("Generate from Wallpaper")
-        btn_wp.setStyleSheet(btn_style)
         btn_wp.clicked.connect(dlg.accept)
         layout.addWidget(btn_wp)
         btn_pick = QPushButton("Pick a Color")
-        btn_pick.setStyleSheet(btn_style)
         btn_pick.clicked.connect(lambda: dlg.done(2))
         layout.addWidget(btn_pick)
         choice = dlg.exec()
@@ -287,42 +312,14 @@ class BlurSwitchManager(QMainWindow):
         if not c.isValid(): c = QColor(128,128,128)
         pm.fill(c); return QIcon(pm)
 
-    def _btn_style(self, r, g, b, pad=8, font_size=None):
-        style = STYLE.format(r=r, g=g, b=b, p=pad)
-        if font_size: style += f"font-size: {font_size}px;"
-        return style
+
 
     def _update_apply_buttons(self):
         for m in self.custom:
             btn = getattr(self, f'apply_{m.lower()}', None)
             if btn: btn.setText(f"Apply {m.title()} {'(Disable Auto)' if self.auto else ''}")
 
-    def _color_btns(self):
-        mode = None
-        if os.path.exists(SCHEDULE_FILE):
-            try:
-                with open(SCHEDULE_FILE) as f:
-                    m = re.search(r'_MODE=(\w+)', f.read())
-                if m:
-                    mode = m.group(1).upper()
-            except:
-                pass
-        if mode and mode in self.MODES + self.custom:
-            tint = self.cfg.get(f"{mode}_TINT", "")
-            if tint.startswith("#") and len(tint) >= 7:
-                try:
-                    h = tint.lstrip("#")
-                    rgb = (int(h[2:4],16),int(h[4:6],16),int(h[6:8],16)) if len(h)==8 else (int(h[0:2],16),int(h[2:4],16),int(h[4:6],16))
-                    r,g,b = rgb
-                    for m in self.MODES+self.custom:
-                        if btn := getattr(self, f'apply_{m.lower()}', None): btn.setStyleSheet(self._btn_style(r,g,b))
-                    self.save_btn.setStyleSheet(self._btn_style(r,g,b,12)); self.auto_btn.setStyleSheet(self._btn_style(r,g,b,12))
-                    return
-                except:
-                    pass
-        for m in self.MODES+self.custom:
-            if btn := getattr(self, f'apply_{m.lower()}', None): btn.setStyleSheet(self._btn_style(33,150,243))
-        self.save_btn.setStyleSheet(self._btn_style(76,175,80,12)); self.auto_btn.setStyleSheet(self._btn_style(255,152,0,12))
+
 
     def _mode_by_hour(self):
         h = datetime.now().hour
@@ -334,7 +331,7 @@ class BlurSwitchManager(QMainWindow):
 
     def _sync_ui_to_mode(self, mode):
         self.current = mode
-        self._color_btns()
+
         self._update_apply_buttons()
         for i in range(self.combo.count()):
             if self.combo.itemText(i).upper()==self.current: self.combo.setCurrentIndex(i); break
@@ -385,14 +382,13 @@ class BlurSwitchManager(QMainWindow):
     def _color_row(self, form, key, label, hex=False):
         row = QHBoxLayout(); e = QLineEdit(self.cfg.get(key,"")); self.inp[key] = e; row.addWidget(e)
         b = QPushButton(); b.setFixedSize(30,30)
-        b.setStyleSheet("QPushButton { background: rgba(128,128,128,0.5); border: none; border-radius: 4px; } QPushButton:hover { background: rgba(128,128,128,0.7); }")
         b.setIcon(self._icon(e.text())); b.setIconSize(QSize(20,20))
         e.textChanged.connect(lambda t: b.setIcon(self._icon(t)))
         b.clicked.connect(lambda: self._pick_hex(e,b) if hex else self._pick_rgb(e,b)); row.addWidget(b); form.addRow(label, row)
 
     def _file_row(self, form, key, label, mode=None):
         row = QHBoxLayout(); e = QLineEdit(self.cfg.get(key,"")); self.inp[key] = e; row.addWidget(e)
-        b = QPushButton("Browse"); b.setStyleSheet(self._btn_style(128,128,128,4))
+        b = QPushButton("Browse")
         b.clicked.connect(lambda: self._browse_wp(e, self.wp[mode]) if mode else self._browse_file(e)); row.addWidget(b); form.addRow(label, row)
 
     def _pick_rgb(self, e, b):
@@ -450,8 +446,7 @@ class BlurSwitchManager(QMainWindow):
 {name}_FF_LOGO=
 {name}_FF_LOGO_COLOR=
 {name}_RGB=
-#-------------------------------------------------------------------------------------------------#
-"""
+#-------------------------------------------------------------------------------------------------#"""
             insert_point = content.find("#get time")
             if insert_point == -1: insert_point = content.find("h=$(date +%H)")
             if insert_point == -1: content += "\n" + section
@@ -514,16 +509,15 @@ class BlurSwitchManager(QMainWindow):
         vc = QVBoxLayout(); vc.addWidget(pv)
         we = QLineEdit(wp); self.inp[f"{mode}_WALLPAPER"] = we
         wr = QHBoxLayout(); wr.addWidget(we)
-        wb = QPushButton("Browse"); wb.setStyleSheet(self._btn_style(128,128,128,4))
+        wb = QPushButton("Browse")
         wb.clicked.connect(lambda _,e=we,p=pv,m=mode: self._browse_wp(e,p,m)); wr.addWidget(wb)
         gen_btn = QPushButton("Generate Colors")
-        gen_btn.setStyleSheet(self._btn_style(128, 128, 128, 4))
         gen_btn.clicked.connect(lambda _,m=mode: self._generate_colors_from_wallpaper(m))
         wr.addWidget(gen_btn)
         vc.addLayout(wr)
         af.addRow("Wallpaper:", vc)
         tr = QHBoxLayout(); te = QLineEdit(self.cfg.get(f"{mode}_TINT","")); self.inp[f"{mode}_TINT"] = te; tr.addWidget(te)
-        tb = QPushButton(); tb.setFixedSize(30,30); tb.setStyleSheet("QPushButton { background: rgba(128,128,128,0.5); border: none; border-radius: 4px; } QPushButton:hover { background: rgba(128,128,128,0.7); }")
+        tb = QPushButton(); tb.setFixedSize(30,30)
         tb.setIcon(self._icon(te.text())); tb.setIconSize(QSize(20,20))
         te.textChanged.connect(lambda t: tb.setIcon(self._icon(t)))
         tb.clicked.connect(lambda _,m=mode: self._pick_alpha(m)); tr.addWidget(tb); af.addRow("Glass Tint:", tr)
@@ -546,7 +540,6 @@ class BlurSwitchManager(QMainWindow):
             remove_btn = QPushButton()
             remove_btn.setFixedSize(35, 35)
             remove_btn.setToolTip("Remove mode")
-            remove_btn.setStyleSheet(self._btn_style(220, 20, 60, 4))
             remove_btn.clicked.connect(self._remove_custom_mode)
             icon_pixmap = QPixmap(24, 24)
             icon_pixmap.fill(Qt.GlobalColor.transparent)
@@ -582,7 +575,7 @@ class BlurSwitchManager(QMainWindow):
         for m in self.MODES+self.custom: self.combo.addItem(m.title(), m)
         self.combo.currentIndexChanged.connect(self._on_combo_changed)
         mode_row.addWidget(self.combo)
-        add_btn = QPushButton("+"); add_btn.setFixedSize(35,35); add_btn.setStyleSheet(self._btn_style(76,175,80,4))
+        add_btn = QPushButton("+"); add_btn.setFixedSize(35,35)
         add_btn.setToolTip("Add new custom mode"); add_btn.clicked.connect(self._add_custom_mode); mode_row.addWidget(add_btn)
         mode_row.addStretch(); l.addLayout(mode_row)
         self.stack = QStackedWidget()
@@ -622,10 +615,17 @@ class BlurSwitchManager(QMainWindow):
                 "[Install]\nWantedBy=default.target"
             )
             tmr = "[Unit]\nDescription=BlurSwitch Auto Mode Timer\n\n[Timer]\nOnCalendar=hourly\nPersistent=true\n\n[Install]\nWantedBy=timers.target"
+            login_svc = (
+                "[Unit]\nDescription=BlurSwitch Auto Mode (Login)\nAfter=graphical-session.target\n\n"
+                "[Service]\nType=oneshot\n"
+                f"ExecStart=\"{script_escaped}\" auto\n"
+                f"{env}"
+                "[Install]\nWantedBy=graphical-session.target"
+            )
             d = os.path.expanduser("~/.config/systemd/user"); os.makedirs(d, exist_ok=True)
-            for n,c in [("blurswitch-auto.service",svc),("blurswitch-auto.timer",tmr)]:
+            for n,c in [("blurswitch-auto.service",svc),("blurswitch-auto.timer",tmr),("blurswitch-auto-login.service",login_svc)]:
                 with open(os.path.join(d,n),"w") as f: f.write(c)
-            for cmd in [["systemctl","--user","daemon-reload"],["systemctl","--user","enable","blurswitch-auto.timer"],["systemctl","--user","start","blurswitch-auto.timer"]]:
+            for cmd in [["systemctl","--user","daemon-reload"],["systemctl","--user","enable","blurswitch-auto.timer"],["systemctl","--user","start","blurswitch-auto.timer"],["systemctl","--user","enable","blurswitch-auto-login.service"]]:
                 subprocess.run(cmd, check=True)
             linger = subprocess.run(["loginctl","show-user",os.environ.get("USER",""),"--property=Linger"], capture_output=True, text=True)
             if linger.stdout.strip() != "Linger=yes":
@@ -695,14 +695,14 @@ class BlurSwitchManager(QMainWindow):
             with open(SCHEDULE_FILE) as f: m = re.search(r'_MODE=(\w+)', f.read())
             if m and (mn := m.group(1).upper()) in self.MODES+self.custom and mn != self.current:
                 self.current = mn
-                self._color_btns()
-        except:
+                self._update_apply_buttons()
+        except Exception:
             pass
 
     def _stop_auto(self):
         try:
             if self._scheduler == "systemd":
-                for cmd in [["systemctl","--user","stop","blurswitch-auto.timer"],["systemctl","--user","disable","blurswitch-auto.timer"]]:
+                for cmd in [["systemctl","--user","stop","blurswitch-auto.timer"],["systemctl","--user","disable","blurswitch-auto.timer"],["systemctl","--user","disable","blurswitch-auto-login.service"]]:
                     subprocess.run(cmd)
             elif self._scheduler == "cron":
                 r = subprocess.run(["crontab","-l"], capture_output=True, text=True)
@@ -785,6 +785,8 @@ class BlurSwitchManager(QMainWindow):
                 except TypeError:
                     pass
                 self._apply_proc.deleteLater()
+        # Remember which mode was applied
+        self.last_applied_mode = mode
         self._apply_proc = QProcess(self)
         self._apply_proc.finished.connect(self._on_apply_done)
         self._apply_proc.errorOccurred.connect(self._on_apply_error)
@@ -792,7 +794,11 @@ class BlurSwitchManager(QMainWindow):
 
     def _on_apply_done(self, exit_code, exit_status):
         self._apply_proc = None
-        self._color_btns()
+        # set current to last applied mode if exists
+        if hasattr(self, 'last_applied_mode'):
+            self.current = self.last_applied_mode
+
+        self._update_apply_buttons()
         if exit_code != 0:
             proc = self.sender()
             err = bytes(proc.readAllStandardError()).decode().strip() if proc else ""
