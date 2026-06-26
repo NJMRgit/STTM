@@ -81,6 +81,8 @@ curl -fsSL -o install "https://raw.githubusercontent.com/NJMRgit/STTM/main/insta
 
 The script verifies its own integrity against the GitHub API before running.
 
+Running the install script if program is already installed will check for any user set themes and preserve them and update the GUI + Script logic
+
 
 ## Requirements
 
