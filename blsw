@@ -224,40 +224,14 @@ echo "_MODE=$ACTIVE_MODE" > "$HOME/.blur-schedule"
 
 echo "Applied $ACTIVE_MODE mode settings"
 
-# Only close the Yakuake session if the mode actually changed
+# Only close Yakuake session if the mode actually changed
 if [ "$MODE_CHANGED" = true ]; then
-    # Only act when this script was launched from inside a Yakuake session
     if pstree -s $$ 2>/dev/null | grep -q yakuake; then
-        # The session's terminal is this script's own controlling tty
-        SESSION_TTY=$(ps -o tty= -p $$ 2>/dev/null)
-        SESSION_TTY=${SESSION_TTY#/dev/}
-
-        if [ -n "$SESSION_TTY" ] && [ "$SESSION_TTY" != "?" ]; then
-            echo "Mode changed, waiting for programs to finish in Yakuake session..."
-            # Wait while any non-shell program is still using the session tty.
-            # One ps snapshot feeds awk; each PID's ppid-chain is walked back to
-            # this script ($$), so the check never sees its own ps/awk/sleep.
-            while ps -t "$SESSION_TTY" -o pid=,ppid=,comm= 2>/dev/null | awk -v s="$$" '
-                { pid[NR]=$1; ppid[$1]=$2; comm[$1]=$3 }
-                END {
-                    for (i=1; i<=NR; i++) {
-                        p=pid[i]; cur=p; in_tree=0
-                        for (k=0; k<200 && (cur in ppid); k++) {
-                            if (cur==s) { in_tree=1; break }
-                            cur=ppid[cur]
-                        }
-                        if (in_tree) continue
-                        if (comm[p] ~ /^(bash|zsh|fish|sh|dash|ksh|tcsh)$/) continue
-                        exit 0          # a program is still running -> keep waiting
-                    }
-                    exit 1               # session idle -> stop waiting
-                }
-            '; do
-                sleep 1
-            done
-            echo "Yakuake is idle, removing session for reload"
-            qdbus6 org.kde.yakuake /yakuake/sessions removeSession "$(qdbus6 org.kde.yakuake /yakuake/sessions activeSessionId)"
-        fi
+        echo "Running inside Yakuake, removing current session for reload"
+        qdbus6 org.kde.yakuake /yakuake/sessions removeSession $(qdbus6 org.kde.yakuake /yakuake/sessions activeSessionId)
+    else
+        echo "Mode changed, waiting for Yakuake session to be idle..."
+        YAKUAKE_PTY=$(for p in /dev/pts/*; do [ -n "$(ps -t $(basename $p) -o pid= 2>/dev/null | head -1)" ] && pstree -s $(ps -t $(basename $p) -o pid= | head -1) 2>/dev/null | grep -q yakuake && basename $p && break; done) && [ -n "$YAKUAKE_PTY" ] && while ps -t "$YAKUAKE_PTY" -o comm= 2>/dev/null | grep -v -E '^(bash|zsh|fish|sh|dash|ksh|tcsh)$' | grep -q .; do sleep 1; done; qdbus6 org.kde.yakuake /yakuake/sessions removeSession $(qdbus6 org.kde.yakuake /yakuake/sessions activeSessionId)
     fi
 else
     echo "Mode unchanged, skipping Yakuake session restart"
