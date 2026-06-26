@@ -1,0 +1,34 @@
+#!/bin/sh
+# pre-commit hook: keep install.sha256 in sync with the install script.
+#
+# Whenever "install" is staged, regenerate install.sha256 from the staged
+# copy and re-stage it so a stale checksum (which breaks every curl-pipe
+# download's self-integrity check) can never be committed again.
+#
+# One-time activation (per clone):
+#   git config core.hooksPath .githooks
+
+set -eu
+
+# Only act when install is part of this commit.
+if ! git diff --cached --name-only | grep -qx "install"; then
+    exit 0
+fi
+
+# Compute the checksum of the staged install bytes — not the working tree —
+# so the checksum reflects the exact bytes being committed. Hashing must
+# match the installer, which runs sha256sum on the downloaded file and
+# compares field 1: "<sha>  install".
+SUM=$(git cat-file -p :install | sha256sum | awk '{print $1}')
+
+# If the staged checksum already matches, nothing to do.
+STAGED_SHA=$(git cat-file -p :install.sha256 2>/dev/null | awk '{print $1}') || STAGED_SHA=""
+if [ "${STAGED_SHA}" = "${SUM}" ]; then
+    exit 0
+fi
+
+# Write the corrected file and stage it.
+printf '%s  install\n' "${SUM}" > install.sha256
+git add install.sha256
+
+echo "pre-commit: regenerated install.sha256 (${SUM}) and staged it." >&2
