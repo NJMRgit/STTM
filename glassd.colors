@@ -49,7 +49,7 @@ ForegroundVisited=179,13,191
 [Colors:Header]
 BackgroundAlternate=29,31,34
 BackgroundNormal=20,22,24,20
-DecorationFocus=120,120,120,
+DecorationFocus=120,120,120
 DecorationHover=90,90,90,150
 ForegroundActive=120,120,120
 ForegroundInactive=161,169,177
