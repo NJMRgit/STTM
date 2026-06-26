@@ -1,0 +1,42 @@
+name: integrity-check
+
+# Fails if the committed install.sha256 does not match the committed
+# install script. Prevents a stale checksum (which makes every clean
+# curl-pipe download fail its self integrity check) from reaching main.
+
+on:
+  push:
+    paths:
+      - install
+      - install.sha256
+  pull_request:
+    paths:
+      - install
+      - install.sha256
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify install.sha256 matches install
+        run: |
+          if [ ! -f install ] || [ ! -f install.sha256 ]; then
+            echo "::error::install and/or install.sha256 is missing"
+            exit 1
+          fi
+
+          expected=$(awk '{print $1}' install.sha256)
+          actual=$(sha256sum install | awk '{print $1}')
+
+          echo "Expected (install.sha256): $expected"
+          echo "Actual   (install):        $actual"
+
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::install.sha256 is out of sync with install."
+            echo "::error::Run: sha256sum install > install.sha256"
+            exit 1
+          fi
+
+          echo "OK — checksums match"
