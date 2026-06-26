@@ -588,10 +588,28 @@ fetch_file() {
 
 merge_script() {
     src="$1"; tgt="$2"
-    split=$(grep -n "^#get time" "$src" | head -1 | cut -d: -f1)
-    [ -z "$split" ] && return 1
-    awk "NR==1,/^#get time/" "$tgt" > "$tgt.tmp" &&
-    awk "NR>$split" "$src" >> "$tgt.tmp" &&
+
+    # Split on the "#get time" marker. Everything ABOVE it (hour settings,
+    # mode variables including any user-added custom modes) is kept verbatim
+    # from the target; everything AT or BELOW it (script logic) is replaced
+    # from source. This way custom modes can shift line numbers freely.
+    ss=$(grep -n "^#get time" "$src" | head -1 | cut -d: -f1)
+    tt=$(grep -n "^#get time" "$tgt" | head -1 | cut -d: -f1)
+
+    # Source malformed (no marker): refuse to merge — fall back to fresh copy.
+    [ -z "$ss" ] && return 1
+
+    # Target has no marker: we can't split it safely. Back the user's file up
+    # BEFORE the fresh-copy fallback overwrites it, so no config is ever lost.
+    if [ -z "$tt" ]; then
+        cp -p "$tgt" "$tgt.bak.$(date +%Y%m%d%H%M%S)" 2>/dev/null || true
+        return 1
+    fi
+
+    # Split by explicit line numbers. (The range pattern NR,/^pat/ never
+    # terminates when the marker is absent — deliberately avoided.)
+    awk -v ts="$tt" 'NR <= ts' "$tgt" > "$tgt.tmp" &&
+    awk -v ss="$ss" 'NR > ss'  "$src" >> "$tgt.tmp" &&
     mv "$tgt.tmp" "$tgt"
 }
 
