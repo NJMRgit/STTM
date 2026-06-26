@@ -238,10 +238,18 @@ if check_darkly; then
     type_text "  darkly"; printf '\033[32m✓\033[0m\n'
     log_step "darkly already installed"
 elif prompt "darkly" "Global dark theme for KDE/GTK" "Build from GitHub? (https://github.com/Bali10050/Darkly.git)"; then
+    # Build Qt6/KF6 only — the Qt5/KF5 variant needs kcmutils5/frameworkintegration5
+    # which are not installed by default and cause the CMake failure otherwise.
     git clone --single-branch --depth=1 https://github.com/Bali10050/Darkly.git "$CLONE_DIR/Darkly"
     if [ -d "$CLONE_DIR/Darkly" ]; then
-        safe_cd "$CLONE_DIR/Darkly" && ./install.sh || true
-        log_step "darkly installed from source"
+        if command -v nproc >/dev/null 2>&1; then CORES=$(nproc); else CORES=1; fi
+        safe_cd "$CLONE_DIR/Darkly" &&
+        mkdir -p build &&
+        cd build &&
+        cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_QT5=OFF &&
+        make -j"$CORES" &&
+        sudo make install || true
+        log_step "darkly built from source (Qt6 only)"
     fi
 fi
 
