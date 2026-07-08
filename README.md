@@ -120,6 +120,9 @@ blsw night
   ```
   yay -S kwin-effects-glass-git --rebuild
   yay -S kwin-effect-rounded-corners-git --rebuild
+  kquitapp6 plasmashell
+  sleep 1
+  kstart6 plasmashell
   ```
 
   or download and rebuild from source ([1](https://github.com/4v3ngR/kwin-effects-glass),[2](https://github.com/matinlotfali/KDE-Rounded-Corners))
