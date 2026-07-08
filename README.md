@@ -113,7 +113,17 @@ blsw afternoon
 blsw evening
 blsw night
 ```
+## Notes
 
+- The effects used for the blur/tint and shadows/outlines sometimes need to be rebuilt after an
+  update.
+  ```
+  yay -S kwin-effects-glass-git --rebuild
+  yay -S kwin-effect-rounded-corners-git --rebuild
+  ```
+
+  or download and rebuild from source ([1](https://github.com/4v3ngR/kwin-effects-glass),[2](https://github.com/matinlotfali/KDE-Rounded-Corners))
+  
 ## Tips
 
 - Calling the script directly allows changing to a custom theme without disabling scheduled mode
@@ -126,9 +136,7 @@ blsw night
   
 - To mitigate transparency issues in dolphin when renaming items disable this option
   <img width="988" height="901" alt="image" src="https://github.com/user-attachments/assets/dd227b23-fb40-4e42-9fd8-7fbd08612154" />
-
-
-
+             
 
 ## Files
 
