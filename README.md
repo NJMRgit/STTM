@@ -117,15 +117,19 @@ blsw night
 
 - The effects used for the blur/tint and shadows/outlines sometimes need to be rebuilt after an
   update.
-  ```
-  yay -S kwin-effects-glass-git --rebuild
-  yay -S kwin-effect-rounded-corners-git --rebuild
-  kquitapp6 plasmashell
-  sleep 1
-  kstart plasmashell
-  ```
+```
+yay -S kwin-effects-glass-git --rebuild
+yay -S kwin-effect-rounded-corners-git --rebuild
+sleep 1
+kquitapp6 plasmashell
+kstart plasmashell
+qdbus6 --literal org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect glass
+qdbus6 --literal org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect glass
+qdbus6 --literal org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect kwin4_effect_shapecorners  
+qdbus6 --literal org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect kwin4_effect_shapecorners
+```
 
-  or download and rebuild from source ([1](https://github.com/4v3ngR/kwin-effects-glass),[2](https://github.com/matinlotfali/KDE-Rounded-Corners))
++ or download and rebuild from source ([1](https://github.com/4v3ngR/kwin-effects-glass),[2](https://github.com/matinlotfali/KDE-Rounded-Corners))
   
 ## Tips
 
