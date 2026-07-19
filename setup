@@ -563,9 +563,13 @@ inactiveForeground=120,120,120
 CSFILE
 printf '\033[32mOK\033[0m\n'
 
-# Toggle ColorScheme to force it to take effect
-kwriteconfig6 --file kdeglobals --group General --key ColorScheme breeze
-kwriteconfig6 --file kdeglobals --group General --key ColorScheme glassd
+# Apply colorscheme, plasmastyle, application style, and gtk style
+kwriteconfig6 --file ~/.config/gtk-3.0/settings.ini --group Settings --key gtk-theme-name "We10X-round-grey-Dark-compact"
+kwriteconfig6 --file ~/.config/gtk-4.0/settings.ini --group Settings --key gtk-theme-name "We10X-round-grey-Dark-compact"
+gsettings set org.gnome.desktop.interface gtk-theme "We10X-round-grey-Dark-compact"
+kwriteconfig6 --file kdeglobals --group KDE --key widgetStyle "Darkly"
+plasma-apply-desktoptheme Iridescent-round 
+plasma-apply-colorscheme glassd
 
 echo
 sleep 0.2
@@ -676,11 +680,11 @@ if prompt_yn "Restart plasmashell?"; then
     echo "Restarting plasmashell..."
     kquitapp6 plasmashell 2>/dev/null || true
     sleep 1
-    kstart6 plasmashell >/dev/null 2>&1 || plasmashell >/dev/null 2>&1 &
+    kstart plasmashell >/dev/null 2>&1 || plasmashell >/dev/null 2>&1 &
     sleep 2
     echo "Plasmashell restarted."
 else
-    echo "Skipping. Restart manually: kquitapp6 plasmashell && kstart6 plasmashell"
+    echo "Skipping. Restart manually: kquitapp6 plasmashell && kstart plasmashell"
 fi
 
 echo
