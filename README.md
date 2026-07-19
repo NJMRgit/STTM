@@ -120,7 +120,6 @@ blsw night
 ```
 yay -S kwin-effects-glass-git --rebuild
 yay -S kwin-effect-rounded-corners-git --rebuild
-sleep 1
 kquitapp6 plasmashell
 kstart plasmashell
 qdbus6 --literal org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect glass
