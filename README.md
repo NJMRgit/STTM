@@ -28,7 +28,7 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 - **Outline Colors** — rounded-corners outline (active + inactive) 
 - **Shadow Colors** — rounded-corners shadow (active + inactive)
 - **Fastfetch Logo** — Fastfetch logo file and logo color (Currently Ascii only)
-- **OpenRGB Profile** — set RGB lighting profile on per-theme basis
+- **OpenRGB Profile** — set RGB lighting profile on per-theme basis (**Requires active OpenRGB daemon)
 
 
 ### Automatic Color Generation
