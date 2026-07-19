@@ -628,7 +628,14 @@ cp_or_fetch() {
             cp "$SCRIPT_DIR/$file" "$target"
         fi
     elif [ -n "$STTM_RAWBASE" ]; then
-        fetch_file "$target" "$STTM_RAWBASE/$file"
+        if [ "$merge" = "merge" ] && [ -f "$target" ]; then
+            tmp_src=$(mktemp /tmp/sttm.XXXXXX)
+            fetch_file "$tmp_src" "$STTM_RAWBASE/$file" || { rm -f "$tmp_src"; return 1; }
+            merge_script "$tmp_src" "$target" || cp "$tmp_src" "$target"
+            rm -f "$tmp_src"
+        else
+            fetch_file "$target" "$STTM_RAWBASE/$file"
+        fi
     else
         echo "  Warning: $file not found, skipping."
         return 1
