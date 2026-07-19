@@ -48,28 +48,36 @@ MSG_BOX_STYLE = """
 """
 
 class WallpaperPreview(QLabel):
+    _full_cache = {}
+
     def __init__(self):
         super().__init__()
-        self.setMinimumHeight(250); self.setMaximumHeight(500)
+        self.setMinimumSize(300, 200)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setStyleSheet("QLabel { background: transparent; border: none; color: rgba(255,255,255,0.5); }")
         self.setText("No Wallpaper Selected")
-        self._pixmap = None; self._rounded = None
+        self._path = None; self._full = None; self._rounded = None
 
     def set_wallpaper(self, path):
-        if path and os.path.exists(path) and not (p := QPixmap(path)).isNull():
-            self._pixmap = p; self._update()
-        else: self.clear()
+        if self._path == path: return
+        self._path = path
+        if path and path in self._full_cache:
+            self._full = self._full_cache[path]
+        elif path and os.path.exists(path) and not (p := QPixmap(path)).isNull():
+            self._full_cache[path] = p; self._full = p
+        else:
+            self.clear(); return
+        self._update()
 
     def _update(self):
-        if not self._pixmap: return
-        s = self._pixmap.scaled(self.width(), self.height(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-        self._rounded = QPixmap(s.size()); self._rounded.fill(Qt.GlobalColor.transparent)
+        if not self._full: return
+        s = self._full.scaled(self.width(), self.height(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        r = QPixmap(s.size()); r.fill(Qt.GlobalColor.transparent)
         path = QPainterPath(); path.addRoundedRect(QRectF(0, 0, s.width(), s.height()), 8, 8)
-        p = QPainter(self._rounded); p.setRenderHint(QPainter.RenderHint.Antialiasing); p.setClipPath(path); p.drawPixmap(0, 0, s); p.end()
-        self.update()
+        p = QPainter(r); p.setRenderHint(QPainter.RenderHint.Antialiasing); p.setClipPath(path); p.drawPixmap(0, 0, s); p.end()
+        self._rounded = r; self.update()
 
-    def clear(self): self._pixmap = None; self._rounded = None; self.setText("No Wallpaper Selected"); self.update()
+    def clear(self): self._path = None; self._full = None; self._rounded = None; self.setText("No Wallpaper Selected"); self.update()
 
     def paintEvent(self, e):
         if self._rounded:
@@ -77,7 +85,9 @@ class WallpaperPreview(QLabel):
             p.drawPixmap((self.width()-self._rounded.width())//2, (self.height()-self._rounded.height())//2, self._rounded); p.end()
         else: super().paintEvent(e)
 
-    def resizeEvent(self, e): super().resizeEvent(e); self._update() if self._pixmap else None
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        if self._full: self._update()
 
 class CenteredCombo(QComboBox):
     def paintEvent(self, e):
@@ -98,8 +108,8 @@ class BlurSwitchManager(QMainWindow):
         os.makedirs(CONFIG_DIR, exist_ok=True)
         self.script = self._get_script(); self.cfg = {}; self.inp = {}; self.wp = {}
         self.auto = False; self.current = None; self.custom = []; self.stack = None; self.settings = {}; self._auto_proc = None; self._apply_proc = None; self._gen_proc = None; self._watch_timer = None
-        self.setWindowTitle("Stoned Theme Manager"); self.resize(800, 1080); self.setMinimumSize(800,700)
-        self.setFont(QFont()); self._load(); self._detect_custom(); self._ui(); self._detect_scheduler(); self._timer_status(); self._detect_mode()
+        self.setWindowTitle("Stoned Theme Manager"); self.setWindowIcon(QIcon(os.path.join(SCRIPT_DIR, "icon.png"))); self.resize(800, 1080); self.setMinimumSize(800,700)
+        self.setFont(QFont()); self._load(); self._detect_custom(); self._ui(); self._restore_geometry(); self._detect_scheduler(); self._timer_status(); self._detect_mode()
         self._watch_timer = QTimer(self)
         self._watch_timer.timeout.connect(self._poll_mode)
         self._watch_timer.start(1000)
@@ -389,7 +399,7 @@ class BlurSwitchManager(QMainWindow):
     def _file_row(self, form, key, label, mode=None):
         row = QHBoxLayout(); e = QLineEdit(self.cfg.get(key,"")); self.inp[key] = e; row.addWidget(e)
         b = QPushButton("Browse")
-        b.clicked.connect(lambda: self._browse_wp(e, self.wp[mode]) if mode else self._browse_file(e)); row.addWidget(b); form.addRow(label, row)
+        b.clicked.connect(lambda: self._browse_wp(e, mode) if mode else self._browse_file(e)); row.addWidget(b); form.addRow(label, row)
 
     def _pick_rgb(self, e, b):
         c = QColor()
@@ -419,13 +429,55 @@ class BlurSwitchManager(QMainWindow):
         if (c := QColorDialog.getColor(c if c.isValid() else QColor(), options=QColorDialog.ColorDialogOption.ShowAlphaChannel)).isValid():
             e.setText(f"#{c.alpha():02x}{c.red():02x}{c.green():02x}{c.blue():02x}".upper())
 
-    def _browse_wp(self, e, pv, mode=None):
+    def _browse_wp(self, e, mode=None):
         if path := QFileDialog.getOpenFileName(self, "Wallpaper", os.path.expanduser("~"), "Images (*.png *.jpg *.jpeg *.bmp *.gif);;*")[0]:
-            e.setText(path); pv.set_wallpaper(path)
+            e.setText(path); self._preview.set_wallpaper(path)
             if mode: self._generate_colors_from_wallpaper(mode, auto=True)
 
     def _browse_file(self, e):
         if path := QFileDialog.getOpenFileName(self, "File", os.path.expanduser("~"), "*")[0]: e.setText(path)
+
+    def _gen_from_wallpaper(self, mode):
+        if self._has_colors(mode):
+            reply = self._styled_msgbox(QMessageBox.Icon.NoIcon, "Replace Colors",
+                "<p style='text-align:center;'>This mode already has colors defined.<br>Are you sure you want to replace them?</p>",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No).exec()
+            if reply != QMessageBox.StandardButton.Yes: return
+        wallpaper = self.inp.get(f"{mode}_WALLPAPER", QLineEdit()).text().strip()
+        if not wallpaper or not os.path.exists(wallpaper):
+            self._styled_msgbox(QMessageBox.Icon.Warning, "Error", "No wallpaper selected!").exec(); return
+        try:
+            img = Image.open(wallpaper)
+            img = img.resize((100, 100)).convert("RGB")
+            pal = img.quantize(colors=5)
+            palette = pal.getpalette()
+            color_counts = pal.getcolors()
+            if not color_counts: raise Exception("Could not extract colors from wallpaper")
+            color_counts.sort(reverse=True, key=lambda x: x[0])
+            dominant = None
+            for count, idx in color_counts:
+                r = palette[idx*3]; g = palette[idx*3+1]; b = palette[idx*3+2]
+                if r < 40 and g < 40 and b < 40: continue
+                if r > 220 and g > 220 and b > 220: continue
+                dominant = f"{r:02x}{g:02x}{b:02x}"; break
+            if not dominant:
+                cnt, idx = color_counts[0]
+                r = palette[idx*3]; g = palette[idx*3+1]; b = palette[idx*3+2]
+                dominant = f"{r:02x}{g:02x}{b:02x}"
+            self._apply_generated_colors({"primary_container": dominant}, mode)
+        except Exception as e:
+            self._styled_msgbox(QMessageBox.Icon.Critical, "Error", f"Color extraction failed:\n{str(e)}").exec()
+
+    def _custom_color(self, mode):
+        if self._has_colors(mode):
+            reply = self._styled_msgbox(QMessageBox.Icon.NoIcon, "Replace Colors",
+                "<p style='text-align:center;'>This mode already has colors defined.<br>Are you sure you want to replace them?</p>",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No).exec()
+            if reply != QMessageBox.StandardButton.Yes: return
+        c = QColorDialog.getColor()
+        if not c.isValid(): return
+        r, g, b = c.red(), c.green(), c.blue()
+        self._apply_generated_colors({"primary_container": f"{r:02x}{g:02x}{b:02x}"}, mode)
 
     def _add_custom_mode(self):
         name, ok = QInputDialog.getText(self, "New Custom Mode", "Enter mode name:")
@@ -493,7 +545,6 @@ class BlurSwitchManager(QMainWindow):
             key = f"{mode}_{v}"
             if key in self.inp: del self.inp[key]
             if key in self.cfg: del self.cfg[key]
-        if mode in self.wp: del self.wp[mode]
         if hasattr(self, f'apply_{mode.lower()}'): delattr(self, f'apply_{mode.lower()}')
         self.combo.blockSignals(True); self.combo.clear()
         for m in self.MODES + self.custom: self.combo.addItem(m.title(), m)
@@ -502,20 +553,27 @@ class BlurSwitchManager(QMainWindow):
         if not self.current: self._detect_mode()
 
     def _mode_page(self, mode):
-        w = QWidget(); l = QVBoxLayout(w); l.setContentsMargins(10, 10, 10, 10)
+        left = QWidget(); left_layout = QVBoxLayout(left); left_layout.setContentsMargins(0, 0, 0, 0)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        form = QWidget(); form_layout = QVBoxLayout(form); form_layout.setContentsMargins(10, 10, 10, 10)
+
         ag = QGroupBox("Appearance"); af = QFormLayout()
-        pv = WallpaperPreview(); self.wp[mode] = pv
-        if wp := self.cfg.get(f"{mode}_WALLPAPER",""): pv.set_wallpaper(wp)
-        vc = QVBoxLayout(); vc.addWidget(pv)
-        we = QLineEdit(wp); self.inp[f"{mode}_WALLPAPER"] = we
+        we = QLineEdit(self.cfg.get(f"{mode}_WALLPAPER","")); self.inp[f"{mode}_WALLPAPER"] = we
         wr = QHBoxLayout(); wr.addWidget(we)
         wb = QPushButton("Browse")
-        wb.clicked.connect(lambda _,e=we,p=pv,m=mode: self._browse_wp(e,p,m)); wr.addWidget(wb)
-        gen_btn = QPushButton("Generate Colors")
-        gen_btn.clicked.connect(lambda _,m=mode: self._generate_colors_from_wallpaper(m))
-        wr.addWidget(gen_btn)
-        vc.addLayout(wr)
-        af.addRow("Wallpaper:", vc)
+        wb.clicked.connect(lambda _,e=we,m=mode: self._browse_wp(e,m)); wr.addWidget(wb)
+        af.addRow("Wallpaper:", wr)
+        gen_row = QHBoxLayout()
+        gw_btn = QPushButton("Generate from Wallpaper")
+        gw_btn.clicked.connect(lambda _,m=mode: self._gen_from_wallpaper(m))
+        gen_row.addWidget(gw_btn)
+        cc_btn = QPushButton("Custom")
+        cc_btn.clicked.connect(lambda _,m=mode: self._custom_color(m))
+        gen_row.addWidget(cc_btn)
+        af.addRow(gen_row)
         tr = QHBoxLayout(); te = QLineEdit(self.cfg.get(f"{mode}_TINT","")); self.inp[f"{mode}_TINT"] = te; tr.addWidget(te)
         tb = QPushButton(); tb.setFixedSize(30,30)
         tb.setIcon(self._icon(te.text())); tb.setIconSize(QSize(20,20))
@@ -524,13 +582,16 @@ class BlurSwitchManager(QMainWindow):
         for k,lb in [(f"{mode}_OUTLINE_COLOR_ACTIVE","Outline Active:"),(f"{mode}_OUTLINE_COLOR_INACTIVE","Outline Inactive:"),
                      (f"{mode}_SHADOW_COLOR","Shadow Active:"),(f"{mode}_SHADOW_COLOR_INACTIVE","Shadow Inactive:")]:
             self._color_row(af, k, lb)
-        ag.setLayout(af); l.addWidget(ag); l.addWidget(self._separator())
+        ag.setLayout(af); form_layout.addWidget(ag); form_layout.addWidget(self._separator())
         fg = QGroupBox("Fastfetch"); ff = QFormLayout()
         self._file_row(ff, f"{mode}_FF_LOGO", "Logo File:"); self._color_row(ff, f"{mode}_FF_LOGO_COLOR", "Logo Color:", True)
-        fg.setLayout(ff); l.addWidget(fg); l.addWidget(self._separator())
+        fg.setLayout(ff); form_layout.addWidget(fg); form_layout.addWidget(self._separator())
         sg = QGroupBox("System"); sf = QFormLayout(); sr = QHBoxLayout()
         re = QLineEdit(self.cfg.get(f"{mode}_RGB","")); self.inp[f"{mode}_RGB"] = re; sr.addWidget(re); sf.addRow("OpenRGB Profile:", sr)
-        sg.setLayout(sf); l.addWidget(sg); l.addSpacing(10)
+        sg.setLayout(sf); form_layout.addWidget(sg); form_layout.addStretch()
+        scroll.setWidget(form)
+        left_layout.addWidget(scroll, 1)
+
         btn_row = QHBoxLayout()
         ab = QPushButton(f"Apply {mode.title()}")
         setattr(self, f'apply_{mode.lower()}', ab)
@@ -558,9 +619,8 @@ class BlurSwitchManager(QMainWindow):
             remove_btn.setIcon(QIcon(icon_pixmap))
             remove_btn.setIconSize(QSize(24, 24))
             btn_row.addWidget(remove_btn)
-        l.addLayout(btn_row)
-        l.addStretch()
-        return w
+        left_layout.addLayout(btn_row)
+        return left
 
     def _ui(self):
         c = QWidget(); self.setCentralWidget(c); l = QVBoxLayout(c)
@@ -570,18 +630,41 @@ class BlurSwitchManager(QMainWindow):
             sp = QSpinBox(); sp.setRange(0,23); sp.setValue(int(self.cfg.get(f"{mode}_HOUR", self.HOURS[mode]))); sp.setMinimumWidth(80)
             self.inp[f"{mode}_HOUR"] = sp; vb.addWidget(sp); tl.addLayout(vb)
         tg.setLayout(tl); l.addWidget(tg)
-        mode_row = QHBoxLayout(); mode_row.addStretch()
+
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setHandleWidth(6)
+        splitter.setStyleSheet("QSplitter::handle { background-color: rgba(128, 128, 128, 0.3); }")
+
+        left_panel = QWidget(); left_layout = QVBoxLayout(left_panel); left_layout.setContentsMargins(0, 0, 0, 0)
+        left_panel.setMinimumWidth(400)
+
+        mode_row = QHBoxLayout()
         self.combo = CenteredCombo()
         for m in self.MODES+self.custom: self.combo.addItem(m.title(), m)
         self.combo.currentIndexChanged.connect(self._on_combo_changed)
         mode_row.addWidget(self.combo)
         add_btn = QPushButton("+"); add_btn.setFixedSize(35,35)
         add_btn.setToolTip("Add new custom mode"); add_btn.clicked.connect(self._add_custom_mode); mode_row.addWidget(add_btn)
-        mode_row.addStretch(); l.addLayout(mode_row)
+        left_layout.addLayout(mode_row)
+
         self.stack = QStackedWidget()
         for m in self.MODES+self.custom:
             pg = self._mode_page(m); self.settings[m] = pg; self.stack.addWidget(pg)
-        sc = QScrollArea(); sc.setWidgetResizable(True); sc.setWidget(self.stack); l.addWidget(sc)
+        left_layout.addWidget(self.stack, 1)
+
+        self._preview = WallpaperPreview()
+        if self.MODES:
+            wp = self.cfg.get(f"{self.MODES[0]}_WALLPAPER","")
+            if wp: self._preview.set_wallpaper(wp)
+
+        splitter.addWidget(left_panel)
+        splitter.addWidget(self._preview)
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+        splitter.setSizes([400, 400])
+        self._splitter = splitter
+        l.addWidget(splitter, 1)
+
         bl = QHBoxLayout()
         self.save_btn = QPushButton("Save Settings"); self.save_btn.clicked.connect(self._save)
         self.auto_btn = QPushButton("Auto Mode (Disabled)"); self.auto_btn.clicked.connect(self._toggle_auto)
@@ -593,6 +676,10 @@ class BlurSwitchManager(QMainWindow):
         if mode in self.settings:
             self.current = mode
             self.stack.setCurrentWidget(self.settings[mode])
+            w = self.inp.get(f"{mode}_WALLPAPER")
+            if w and w.text().strip(): self._preview.set_wallpaper(w.text().strip())
+            elif wp := self.cfg.get(f"{mode}_WALLPAPER",""): self._preview.set_wallpaper(wp)
+            else: self._preview.clear()
 
     def _toggle_auto(self):
         if self.auto: self._stop_auto()
@@ -810,6 +897,7 @@ class BlurSwitchManager(QMainWindow):
         self._styled_msgbox(QMessageBox.Icon.Critical, "Error", f"Apply script failed:\n{err}").exec()
 
     def closeEvent(self, event):
+        self._save_geometry()
         if self._watch_timer is not None:
             self._watch_timer.stop()
         for proc in [self._auto_proc, self._apply_proc, self._gen_proc]:
@@ -824,6 +912,20 @@ class BlurSwitchManager(QMainWindow):
                     proc.kill()
                     proc.waitForFinished(1000)
         super().closeEvent(event)
+
+    def _restore_geometry(self):
+        s = QSettings("sttm", "sttm")
+        geo = s.value("geometry")
+        if geo is not None:
+            self.restoreGeometry(geo)
+        state = s.value("splitter")
+        if state is not None:
+            self._splitter.restoreState(state)
+
+    def _save_geometry(self):
+        s = QSettings("sttm", "sttm")
+        s.setValue("geometry", self.saveGeometry())
+        s.setValue("splitter", self._splitter.saveState())
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
