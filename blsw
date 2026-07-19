@@ -86,6 +86,19 @@ h=$(date +%H)
 
 [ -z "$HOME" ] && HOME=/tmp/
 
+# fix mode - rebuild and reload effects
+if [ "$1" = "--fix" ]; then
+    yay -S kwin-effects-glass-git --rebuild
+    yay -S kwin-effect-rounded-corners-git --rebuild
+    kquitapp6 plasmashell
+    kstart plasmashell
+    qdbus6 --literal org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect glass
+    qdbus6 --literal org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect glass
+    qdbus6 --literal org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect kwin4_effect_shapecorners
+    qdbus6 --literal org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect kwin4_effect_shapecorners
+    exit 0
+fi
+
 # Allow manual mode selection with flags
 MODE="$_MODE"
 
