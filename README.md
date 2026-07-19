@@ -66,7 +66,6 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 
 ### KDE Plasma Integration
 - Applies settings via `kwriteconfig6`, `plasma-apply-wallpaperimage`, and `qdbus6`
-- Wayland Only
 
 ### Additional Integrations
 - **OpenRGB** — load a profile per mode
@@ -89,9 +88,11 @@ Running the install script if program is already installed will check for any us
 - Python 3 + PyQt6
 - KDE Plasma 6+ (Tested working on 6.6.5 and 6.7)
 - `openrgb` (optional, for RGB lighting)
-- `systemctl --user` or `cronie` (for auto mode scheduling)
+- `systemd` or `cronie` (for auto mode scheduling)
+
+## Effects Used
+
 - [Glass](https://github.com/4v3ngR/kwin-effects-glass)
-- [Darkly](https://github.com/Bali10050/Darkly)
 - [KDE-Rounded-Corners](https://github.com/matinlotfali/KDE-Rounded-Corners)
 
 ## Usage
