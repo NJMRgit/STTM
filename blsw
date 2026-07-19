@@ -221,10 +221,74 @@ fi
 
 # apply wallpaper & fastfetch logo
 [ -n "$WALLPAPER" ] && plasma-apply-wallpaperimage "$WALLPAPER"
+
+# locate fastfetch config - defer to fastfetch's own resolution
+FF_CONFIG=""
+if [ -n "$FASTFETCH_CONFIG_PATH" ]; then
+    [ -f "$FASTFETCH_CONFIG_PATH" ] && FF_CONFIG="$FASTFETCH_CONFIG_PATH"
+elif command -v fastfetch >/dev/null 2>&1; then
+    FF_CONFIG=$(fastfetch --list-config-paths 2>/dev/null | head -1)
+    [ -f "$FF_CONFIG" ] || FF_CONFIG=""
+fi
+# fallback: check standard paths in fastfetch order
+if [ -z "$FF_CONFIG" ]; then
+    for d in "${XDG_CONFIG_HOME:-$HOME/.config}" "/etc"; do
+        for f in "$d/fastfetch/config.jsonc" "$d/fastfetch/config.json"; do
+            [ -f "$f" ] && FF_CONFIG="$f" && break 2
+        done
+    done
+fi
+
+# create config if none exists, so logo settings can still be applied
+if [ -z "$FF_CONFIG" ]; then
+    FF_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/config.jsonc"
+    mkdir -p "$(dirname "$FF_CONFIG")"
+    if command -v fastfetch >/dev/null 2>&1; then
+        fastfetch --gen-config 2>/dev/null || true
+    fi
+    if [ ! -f "$FF_CONFIG" ]; then
+        cat > "$FF_CONFIG" <<- 'EOF'
+{
+    "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+    "logo": {
+        "source": "",
+        "color": { "1": "" }
+    }
+}
+EOF
+    fi
+fi
+
 [ -n "$FF_LOGO" ] && EXTRA_JQ=".logo.source = \"$FF_LOGO\" |"
 [ -n "$FF_LOGO_COLOR" ] && EXTRA_JQ="${EXTRA_JQ} .logo.color = { \"1\": \"$FF_LOGO_COLOR\" } |"
 if [ -n "$FF_LOGO" ] || [ -n "$FF_LOGO_COLOR" ]; then
-    jq "${EXTRA_JQ%|}" "$HOME/.config/fastfetch/config.jsonc" > tmp.json && mv tmp.json "$HOME/.config/fastfetch/config.jsonc"
+    # parse JSONC -> JSON, apply jq, write back as JSON (valid JSONC)
+    python3 -c "
+import json, re, sys
+with open(sys.argv[1]) as f:
+    text = f.read()
+# strip block comments
+text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL)
+# strip single-line comments (track string state to avoid breaking URLs)
+lines = text.split('\n')
+clean = []
+for line in lines:
+    out = ''
+    in_str = False
+    esc = False
+    for i, c in enumerate(line):
+        if esc:           esc = False; out += c; continue
+        if c == '\\\\':   esc = True;  out += c; continue
+        if c == '\"':     in_str = not in_str
+        if not in_str and c == '/' and i+1 < len(line) and line[i+1] == '/': break
+        out += c
+    clean.append(out)
+text = '\n'.join(clean)
+# remove trailing commas
+text = re.sub(r',(\s*[}\]])', r'\1', text)
+data = json.loads(text)
+json.dump(data, sys.stdout, indent=4)
+" "$FF_CONFIG" | jq "${EXTRA_JQ%|}" > tmp.json && mv tmp.json "$FF_CONFIG"
 fi
 
 # reload kwin effects (fixes issue with some effects not updating correctly)

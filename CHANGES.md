@@ -143,3 +143,22 @@ Replaced yes/no prompt with 3-option menu:
 - **Geometry saved on close** — `closeEvent` saves the window size, position, and splitter state via `QSettings("sttm", "sttm")`
 - **Geometry restored on launch** — `_restore_geometry` is called during `__init__`; if no saved state exists, the default 800×1080 size is used
 - **Application icon** — `setWindowIcon` loads `icon.png` from the project directory for the titlebar and taskbar
+
+# blsw Changes
+
+## 1. Fastfetch Config Resolution
+- **Delegates to fastfetch** — `fastfetch --list-config-paths` is used to determine the actual config path, respecting whatever custom config resolution the installed fastfetch version uses
+- **FASTFETCH_CONFIG_PATH** — if set and the file exists, takes priority
+- **Standard paths fallback** — checks `$XDG_CONFIG_HOME/fastfetch/` and `/etc/fastfetch/` for both `config.jsonc` and `config.json`
+
+## 2. Auto-create Config
+- **Creates config if missing** — if no fastfetch config exists at any location, the script creates `$XDG_CONFIG_HOME/fastfetch/config.jsonc`
+- **`fastfetch --gen-config`** — tried first to generate the full default config
+- **Minimal skeleton fallback** — if gen-config fails or fastfetch isn't available, writes a minimal config with `logo.source` and `logo.color` so logo vars can still be applied
+
+## 3. JSONC Handling
+- **Python3 pre-processor** — strips JSONC-specific syntax before piping through `jq`
+- **Block comments** (`/* */`) — safely removed
+- **Single-line comments** (`//`) — removed with string-state tracking so URLs inside strings (e.g. `https://example.com`) are not corrupted
+- **Trailing commas** — removed (valid in JSONC, invalid in JSON)
+- **Output** — written as plain JSON (valid JSONC, fastfetch handles both formats)
