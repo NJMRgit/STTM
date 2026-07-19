@@ -688,6 +688,6 @@ else
 fi
 
 echo
-echo "Install Complete."
+echo "Install Complete. Some applications may need to be restarted for changes to fully apply"
 printf "\n%s" "Press Enter to exit."
 read -r REPLY
