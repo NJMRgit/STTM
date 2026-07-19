@@ -34,7 +34,7 @@ type_text() {
         c=$(printf '%s' "$str" | sed 's/\(.\).*/\1/')
         printf '%s' "$c"
         str=$(printf '%s' "$str" | sed 's/.//')
-        sleep 0.0015
+        sleep 0.004
     done
 }
 
@@ -43,55 +43,316 @@ clean() {
     printf '%s\n' "$1" | sed 's/[[:space:]]*#.*//' | sed 's/[[:space:]]*$//'
 }
 
-printf '\033[36m'
-printf '███████╗ ████████╗ ████████╗ ███╗   ███╗\n'
-printf '██╔════╝ ╚══██╔══╝ ╚══██╔══╝ ████╗ ████║\n'
-printf '███████╗    ██║       ██║    ██╔████╔██║\n'
-printf '╚════██║    ██║       ██║    ██║╚██╔╝██║\n'
-printf '███████║    ██║       ██║    ██║ ╚═╝ ██║\n'
-printf '╚══════╝    ╚═╝       ╚═╝    ╚═╝     ╚═╝\n'
-printf '\033[0m'
-echo "  Stoned Theme Manager — First Time Setup"
-printf '\033[2m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n'
-echo "  - Adds grey transparent color scheme to work with darkly and glass"
-echo "  - Sets glass defaults"
-echo "  - Sets outline and glow defaults"
-echo "  - Enables Darkly application theme"
-echo "  - Enables Iridescent-round Plasma theme"
-echo "  - Adds window rule for CSD shadow compatability"
-echo "       ** Force disables window decorations so shadows are properly drawn"
-echo "  - Adds window-specific override in breeze/darkly window decorations (forces window decorations back on while still drawing shadows)"
-echo "       ** Force window decorations back on while still drawing shadows"
-echo ""
-if ! prompt_yn "Apply these changes?"; then
-    echo "Aborted."
-    exit 0
-fi
-echo
+spinner_chars="- \\ | /"
+NEXT_ROW=0
+file_row=0
+file_count=0
+file_descs=""
+config_summary=""
+styles_summary=""
+manager_summary=""
+INSTALL_DIR=""
+W=0
+H=0
+
+enter_fullscreen() {
+    W=$(tput cols 2>/dev/null || echo 80)
+    H=$(tput lines 2>/dev/null || echo 24)
+    [ "$W" -lt 60 ] && W=60
+    [ "$H" -lt 15 ] && H=15
+
+    printf '\033[?1049h'
+    printf '\033[?25l'
+
+    # Animate border spreading from top-left corner
+    printf '\033[1;1H┌'
+    c=2
+    m=$((W < H ? W : H))
+    while [ "$c" -lt "$m" ]; do
+        printf '\033[1;%sH─' "$c"
+        printf '\033[%s;1H│' "$c"
+        sleep 0.002
+        c=$((c + 1))
+    done
+    while [ "$c" -lt "$W" ]; do
+        printf '\033[1;%sH─' "$c"
+        sleep 0.002
+        c=$((c + 1))
+    done
+    [ "$W" -gt 1 ] && printf '\033[1;%sH┐' "$W"
+    while [ "$c" -lt "$H" ]; do
+        printf '\033[%s;1H│' "$c"
+        sleep 0.002
+        c=$((c + 1))
+    done
+    printf '\033[%s;1H└' "$H"
+    d=2
+    while [ "$d" -lt "$H" ]; do
+        printf '\033[%s;%sH│' "$d" "$W"
+        sleep 0.0015
+        d=$((d + 1))
+    done
+    d=2
+    while [ "$d" -lt "$W" ]; do
+        printf '\033[%s;%sH─' "$H" "$d"
+        sleep 0.0015
+        d=$((d + 1))
+    done
+    printf '\033[%s;%sH┘' "$H" "$W"
+
+    # Animate header wipe top-to-bottom
+    printf '\033[36m\033[2;2H███████╗ ████████╗ ████████╗ ███╗   ███╗\033[0m'; sleep 0.05
+    printf '\033[36m\033[3;2H██╔════╝ ╚══██╔══╝ ╚══██╔══╝ ████╗ ████║\033[0m'; sleep 0.05
+    printf '\033[36m\033[4;2H███████╗    ██║       ██║    ██╔████╔██║\033[0m'; sleep 0.05
+    printf '\033[36m\033[5;2H╚════██║    ██║       ██║    ██║╚██╔╝██║\033[0m'; sleep 0.05
+    printf '\033[36m\033[6;2H███████║    ██║       ██║    ██║ ╚═╝ ██║\033[0m'; sleep 0.05
+    printf '\033[36m\033[7;2H╚══════╝    ╚═╝       ╚═╝    ╚═╝     ╚═╝\033[0m'; sleep 0.05
+    printf '\033[36m\033[8;2H  Stoned Theme Manager — First Time Setup\033[0m'; sleep 0.05
+    printf '\033[9;1H├'
+    c=2; while [ "$c" -lt "$W" ]; do printf '─'; c=$((c + 1)); done
+    printf '┤'
+    NEXT_ROW=10
+
+    # Clear content area rows 10 to H-1
+    r=10
+    while [ "$r" -lt "$H" ]; do
+        printf '\033[%s;2H\033[K' "$r"
+        printf '\033[%s;%sH│' "$r" "$W"
+        r=$((r + 1))
+    done
+}
+
+left_border() {
+    printf '\033[%s;2H\033[K' "$1"
+    printf '\033[%s;%sH│' "$1" "$W"
+}
+
+checklist_mark() {
+    row=$((3 + $1))
+    printf '\033[%s;%sH\033[32m✓\033[0m' "$row" "$((W - 23))"
+}
+
+section_header() {
+    left_border "$NEXT_ROW"
+    printf '\033[%s;2H\033[2m── %s\033[0m\n' "$NEXT_ROW" "$1"
+    NEXT_ROW=$((NEXT_ROW + 1))
+}
+
+exit_fullscreen() {
+    printf '\033[?25h'
+    printf '\033[?1049l'
+}
+
+start_file() {
+    file_row=$NEXT_ROW
+    NEXT_ROW=$((NEXT_ROW + 1))
+    left_border "$file_row"
+    printf '\033[%s;2H  ' "$file_row"
+    type_text "$1"
+    printf ' '
+    for c in $spinner_chars; do
+        printf '\b%s' "$c"
+        sleep 0.04
+    done
+    desc_count=0
+    file_descs=""
+}
+
+add_desc() {
+    desc_count=$((desc_count + 1))
+    file_descs="$file_descs  - $1
+"
+    left_border "$NEXT_ROW"
+    printf '\033[%s;2H  - %s' "$NEXT_ROW" "$1"
+    NEXT_ROW=$((NEXT_ROW + 1))
+    left_border "$file_row"
+    printf '\033[%s;2H  %s ' "$file_row" "$current_file"
+    for c in $spinner_chars; do
+        printf '\b%s' "$c"
+        sleep 0.04
+    done
+    sleep 0.15
+}
+
+finish_file() {
+    left_border "$file_row"
+    printf '\033[%s;2H  %s \033[32m✓\033[0m' "$file_row" "$1"
+    config_summary="$config_summary
+ ~/.config/$1 ($desc_count)
+$file_descs"
+    file_count=$((file_count + 1))
+}
+
+show_summary() {
+    DIVIDER=$((W / 2 + 1))
+    [ -z "$INSTALL_DIR" ] && INSTALL_DIR="~/.local/bin"
+    left_data="  Files updated ($file_count):
+$config_summary
+  Styles/Colors applied:
+$styles_summary
+  Manager:
+$manager_summary"
+    right_data="  Commands:
+    blsw morning|noon|afternoon|evening|night
+    blsw auto
+    blsw --fix
+  GUI:
+    sttm
+    python3 sttm --portable
+  Examples:
+    blsw morning        Manual theme
+    blsw auto           Time-based
+    blsw --fix          Rebuild effects
+    sttm                Launch GUI
+  File locations:
+    $INSTALL_DIR/sttm
+    $INSTALL_DIR/blsw
+    ~/.local/share/color-schemes/glassd.colors"
+
+    left_count=$(printf '%s\n' "$left_data" | wc -l)
+    right_count=$(printf '%s\n' "$right_data" | wc -l)
+    max_rows=$left_count
+    [ "$right_count" -gt "$max_rows" ] && max_rows=$right_count
+
+    section_header "Summary"
+    start_row=$NEXT_ROW
+    end_row=$((start_row + max_rows - 1))
+
+    row=1
+    while [ "$row" -le "$max_rows" ]; do
+        r=$((start_row + row - 1))
+        left_line=$(printf '%s\n' "$left_data" | sed -n "${row}p")
+        right_line=$(printf '%s\n' "$right_data" | sed -n "${row}p")
+        left_border "$r"
+        printf '\033[%s;2H%s' "$r" "$left_line"
+        printf '\033[%s;%sH│' "$r" "$DIVIDER"
+        if [ -n "$right_line" ]; then
+            printf '\033[%s;%sH%s' "$r" "$((DIVIDER + 2))" "$right_line"
+        fi
+        row=$((row + 1))
+    done
+
+    NEXT_ROW=$((end_row + 1))
+
+    # Inner separator before exit prompt
+    printf '\033[%s;1H├' "$NEXT_ROW"
+    c=2; while [ "$c" -lt "$W" ]; do printf '─'; c=$((c + 1)); done
+    printf '┤\n'
+    NEXT_ROW=$((NEXT_ROW + 1))
+
+    left_border "$NEXT_ROW"
+    printf '\033[%s;2H  Press Enter to exit.' "$NEXT_ROW"
+    read -r REPLY
+    exit_fullscreen
+}
+
+cleanup() {
+    printf '\033[?25h'
+    printf '\033[?1049l'
+    exit 1
+}
+trap cleanup INT TERM TSTP
+
+enter_fullscreen
+
+row0=$NEXT_ROW
+left_border "$NEXT_ROW"; NEXT_ROW=$((NEXT_ROW + 1))
+left_border "$NEXT_ROW"; NEXT_ROW=$((NEXT_ROW + 1))
+left_border "$NEXT_ROW"; NEXT_ROW=$((NEXT_ROW + 1))
+left_border "$NEXT_ROW"; NEXT_ROW=$((NEXT_ROW + 1))
+left_border "$NEXT_ROW"; NEXT_ROW=$((NEXT_ROW + 1))
+left_border "$NEXT_ROW"; NEXT_ROW=$((NEXT_ROW + 1))
+left_border "$NEXT_ROW"; NEXT_ROW=$((NEXT_ROW + 1))
+left_border "$NEXT_ROW"; NEXT_ROW=$((NEXT_ROW + 1))
+left_border "$NEXT_ROW"; NEXT_ROW=$((NEXT_ROW + 1))
+left_border "$NEXT_ROW"; NEXT_ROW=$((NEXT_ROW + 1))
+LINE1="  - Enable Glass'd color scheme"
+LINE2="    + Custom Transparent Color Scheme"
+LINE3="    + Required for Full Window Transparency"
+LINE4="  - Enable Darkly Application Style"
+LINE5="    + Required for Full Window Transparency"
+LINE6="  - Change 4v3ngR/kwin-effects-glass settings and enable the effect"
+LINE7="  - Change matinlotfali/KDE-Rounded-Corners settings and enable the effect"
+LINE8="  - Change Plasma style to Iridescent-round"
+LINE9="  - Change GTK Theme to we10x"
+LINE10="  - Add Window rule for CSD shadow compatibility"
+max_len=0
+for l in "$LINE1" "$LINE2" "$LINE3" "$LINE4" "$LINE5" "$LINE6" "$LINE7" "$LINE8" "$LINE9" "$LINE10"; do
+    ll=${#l}
+    [ "$ll" -gt "$max_len" ] && max_len=$ll
+done
+col=$((max_len - 1))
+while [ "$col" -ge 0 ]; do
+    r=0
+    for l in "$LINE1" "$LINE2" "$LINE3" "$LINE4" "$LINE5" "$LINE6" "$LINE7" "$LINE8" "$LINE9" "$LINE10"; do
+        c=$(printf '%s' "$l" | cut -c $((col + 1)))
+        [ -n "$c" ] && printf '\033[%s;%sH%s' "$((row0 + r))" "$((2 + col))" "$c"
+        r=$((r + 1))
+    done
+    col=$((col - 1))
+    sleep 0.001
+done
+left_border "$NEXT_ROW"
+printf '\033[%s;2H  ' "$NEXT_ROW"
+type_text "Continue? [Y/n]: "
+read -r REPLY < /dev/tty
+case "$REPLY" in
+    [nN]|[nN][oO])
+        printf '\033[%s;2H  Aborted.\n' "$NEXT_ROW"
+        exit 0
+        ;;
+esac
+printf '\n'
+NEXT_ROW=$((NEXT_ROW + 1))
+left_border "$NEXT_ROW"
+printf '\033[%s;2H  Hide titlebars? [y/N]: ' "$NEXT_ROW"
+read -r REPLY < /dev/tty
+case "$REPLY" in
+    [yY]|[yY][eE][sS]) hide_titlebars=true ;;
+    *) hide_titlebars=false ;;
+esac
+NEXT_ROW=$((NEXT_ROW + 1))
+
+# Animate checklist reveal top-to-bottom
+printf '\033[3;%sH┌──────────────────────┐' "$((W - 25))"; sleep 0.05
+printf '\033[4;%sH│ ○ Update Files       │' "$((W - 25))"; sleep 0.05
+printf '\033[5;%sH│ ○ Apply styles/colors│' "$((W - 25))"; sleep 0.05
+printf '\033[6;%sH│ ○ Install Manager    │' "$((W - 25))"; sleep 0.05
+printf '\033[7;%sH└──────────────────────┘' "$((W - 25))"; sleep 0.05
+
+# Bottom-to-top wipe of description text
+r=$((NEXT_ROW - 1))
+while [ "$r" -ge 10 ]; do
+    printf '\033[%s;2H\033[K' "$r"
+    printf '\033[%s;%sH│' "$r" "$W"
+    r=$((r - 1))
+    sleep 0.02
+done
 
 # Ensure config files exist before writing to them
 for cfg in breezerc darklyrc kwinrc kwinrulesrc; do
     path="$HOME/.config/$cfg"
     if [ ! -f "$path" ]; then
-        echo "  Creating $cfg..."
+        left_border "$NEXT_ROW"; printf '\033[%s;2H  Creating %s...\n' "$NEXT_ROW" "$cfg"; NEXT_ROW=$((NEXT_ROW + 1))
         touch "$path"
     fi
 done
 
+printf '\033[10;1H│\033[J'
+r=11; while [ "$r" -lt "$H" ]; do
+    printf '\033[%s;1H│' "$r"
+    printf '\033[%s;%sH│' "$r" "$W"
+    r=$((r + 1))
+done
+printf '\033[%s;1H└' "$H"; c=2; while [ "$c" -lt "$W" ]; do printf '─'; c=$((c + 1)); done; printf '┘'
+left_border 10
+printf '\033[10;2H\033[2m── Updating config files\033[0m\n'
+NEXT_ROW=11
+
 anim_apply=false
 do_anim=false
-group_open=false
-
-close_group() {
-    if $group_open; then
-        for c in - \\ \| / -; do
-            printf '%s\b' "$c"
-            sleep 0.017
-        done
-        printf '\033[32m✓\033[0m\n'
-        group_open=false
-    fi
-}
+current_file=""
+description=""
 
 while IFS= read -r line || [ -n "$line" ]; do
     # Strip leading whitespace, skip empties and comments
@@ -103,14 +364,20 @@ while IFS= read -r line || [ -n "$line" ]; do
     # Section header — file|group
     case "$raw" in
         \[*\])
-            close_group
+            if [ -n "$description" ]; then
+                add_desc "$description"
+            fi
+            description=""
             sect=$(echo "$raw" | sed 's/^\[\(.*\)\]$/\1/')
             file=$(echo "$sect" | sed 's/|.*//')
             group=$(echo "$sect" | sed 's/.*|//')
-            printf "  "
-            type_text "${file} [${group}]"
-            printf ": "
-            group_open=true
+            if [ "$file" != "$current_file" ]; then
+                if [ -n "$current_file" ]; then
+                    finish_file "$current_file"
+                fi
+                start_file "$file"
+                current_file="$file"
+            fi
             continue
             ;;
     esac
@@ -120,6 +387,12 @@ while IFS= read -r line || [ -n "$line" ]; do
         *=*)
             key=$(printf '%s\n' "$raw" | sed 's/=.*//;s/[[:space:]]*$//')
             val=$(printf '%s\n' "$raw" | sed 's/^[^=]*=//')
+
+            # --- description (printed after section is processed) ---
+            if [ "$key" = "_description" ]; then
+                description="$val"
+                continue
+            fi
 
             # --- animation prompt ---
             if printf '%s\n' "$val" | grep -q "Prompt user for this change"; then
@@ -157,6 +430,23 @@ while IFS= read -r line || [ -n "$line" ]; do
                 continue
             fi
 
+            # --- hide titlebars prompt ---
+            if printf '%s\n' "$val" | grep -q "enable hide titlebars"; then
+                if [ -z "${hide_titlebars+x}" ]; then
+                    printf "\n%s [y/N]: " "Hide Titlebars?" >&2
+                    read -r REPLY < /dev/tty
+                    case "$REPLY" in
+                        [yY]|[yY][eE][sS]) apply "$file" "$group" "$key" "true" ;;
+                        *) apply "$file" "$group" "$key" "false" ;;
+                    esac
+                elif $hide_titlebars; then
+                    apply "$file" "$group" "$key" "true"
+                else
+                    apply "$file" "$group" "$key" "false"
+                fi
+                continue
+            fi
+
             v=$(clean "$val")
             apply "$file" "$group" "$key" "$v"
             ;;
@@ -169,145 +459,8 @@ done <<'CONFIGS'
 # Inline annotations are stripped.
 # ----------------------------------------------------------------
 
-[kdeglobals|ColorEffects:Disabled]
-ChangeSelectionColor=
-Color=23,23,23
-ColorAmount=0
-ColorEffect=0
-ContrastAmount=0.65
-ContrastEffect=1
-Enable=
-IntensityAmount=0.1
-IntensityEffect=2
-
-[kdeglobals|ColorEffects:Inactive]
-ChangeSelectionColor=false
-Color=112,111,110
-ColorAmount=0.025
-ColorEffect=2
-ContrastAmount=0.1
-ContrastEffect=2
-Enable=false
-IntensityAmount=0
-IntensityEffect=0
-
-[kdeglobals|Colors:Button]
-BackgroundAlternate=105,105,105
-BackgroundNormal=0,0,0,45
-DecorationFocus=0,109,12,60
-DecorationHover=175,175,175
-ForegroundActive=120,120,120
-ForegroundInactive=102,106,115
-ForegroundLink=41,128,185
-ForegroundNegative=41,189,13
-ForegroundNeutral=255,106,0
-ForegroundNormal=195,199,209
-ForegroundPositive=113,247,159
-ForegroundVisited=69,40,134
-
-[kdeglobals|Colors:Complementary]
-BackgroundAlternate=93,93,93
-BackgroundNormal=93,93,93
-DecorationFocus=82,82,82
-DecorationHover=90,90,90,150
-ForegroundActive=120,120,120
-ForegroundInactive=174,181,196
-ForegroundLink=41,128,185
-ForegroundNegative=41,189,13
-ForegroundNeutral=255,106,0
-ForegroundNormal=211,218,227
-ForegroundPositive=113,247,159
-ForegroundVisited=179,13,191
-
-[kdeglobals|Colors:Header]
-BackgroundAlternate=29,31,34
-BackgroundNormal=20,22,24,20
-DecorationFocus=120,120,120
-DecorationHover=90,90,90,150
-ForegroundActive=120,120,120
-ForegroundInactive=161,169,177
-ForegroundLink=29,153,243
-ForegroundNegative=218,68,83
-ForegroundNeutral=246,116,0
-ForegroundNormal=200,200,200
-ForegroundPositive=39,174,96
-ForegroundVisited=155,89,182
-
-[kdeglobals|Colors:Header][Inactive]
-BackgroundAlternate=29,31,34
-BackgroundNormal=20,22,24,20
-DecorationFocus=120,120,120
-DecorationHover=90,90,90,150
-ForegroundActive=120,120,120
-ForegroundInactive=161,169,177
-ForegroundLink=29,153,243
-ForegroundNegative=218,68,83
-ForegroundNeutral=246,116,0
-ForegroundNormal=252,252,252
-ForegroundPositive=39,174,96
-ForegroundVisited=155,89,182
-
-[kdeglobals|Colors:Selection]
-BackgroundAlternate=116,116,116,155
-BackgroundNormal=50,50,50,85
-DecorationFocus=66,14,210
-DecorationHover=66,14,210
-ForegroundActive=252,252,252
-ForegroundInactive=211,218,227
-ForegroundLink=253,188,75
-ForegroundNegative=41,189,13
-ForegroundNeutral=255,106,0
-ForegroundNormal=225,225,225
-ForegroundPositive=113,247,159
-ForegroundVisited=189,195,199
-
-[kdeglobals|Colors:Tooltip]
-BackgroundAlternate=30,32,36
-BackgroundNormal=90,90,90,150
-DecorationFocus=0,72,82
-DecorationHover=0,144,20
-ForegroundActive=120,120,120
-ForegroundInactive=174,181,196
-ForegroundLink=41,128,185
-ForegroundNegative=41,189,13
-ForegroundNeutral=255,106,0
-ForegroundNormal=211,218,227
-ForegroundPositive=113,247,159
-ForegroundVisited=37,22,75
-
-[kdeglobals|Colors:View]
-BackgroundAlternate=29,31,34,32
-BackgroundNormal=35,35,35,1
-DecorationFocus=0,0,0,45
-DecorationHover=90,90,90,150
-ForegroundActive=255,255,255,0
-ForegroundInactive=161,169,177
-ForegroundLink=29,153,243
-ForegroundNegative=218,68,83
-ForegroundNeutral=246,116,0
-ForegroundNormal=240,240,240
-ForegroundPositive=39,174,96
-ForegroundVisited=155,89,182
-
-[kdeglobals|Colors:Window]
-BackgroundAlternate=41,44,48
-BackgroundNormal=35,35,35,1
-DecorationFocus=200,200,200
-DecorationHover=90,90,90,150
-ForegroundActive=0,0,0,20
-ForegroundInactive=161,169,177
-ForegroundLink=29,153,243
-ForegroundNegative=218,68,83
-ForegroundNeutral=246,116,0
-ForegroundNormal=252,252,252
-ForegroundPositive=39,174,96
-ForegroundVisited=155,89,182
-
-[kdeglobals|General]
-ColorScheme=glassd
-ColorSchemeHash=363bb2816ae591cbef60d92d8fd040f725221af3
-
 [kwinrc|Effect-blurplus]
+_description=configure glass blur effect settings
 BlurDecorations=true
 BlurMatching=false
 BlurNonMatching=true
@@ -328,12 +481,14 @@ TopCornerRadius=6
 WindowClasses=gsr-ui\nactivate-linux
 
 [kwinrc|Plugins]
+_description=adjust enabled desktop effects
 blurEnabled=false
 fadeEnabled=true  
 glassEnabled=true
 scaleEnabled=false  
 
 [kwinrc|Round-Corners]
+_description=configure rounded corners settings
 ActiveShadowAlpha=170
 ActiveShadowUseCustom=true
 DisableOutlineMaximize=false
@@ -357,29 +512,35 @@ Size=6
 UseNativeDecorationShadows=false
 
 [kwinrc|org.kde.kdecoration2]
+_description=set window decoration theme
 NoPlugin=false
 library=org.kde.darkly
 theme=Darkly
 
 [kwinrulesrc|50a6fdb6-57ad-47da-aedd-67ff644f4ef5]
+_description=add window rule for shadow compatibility
 Description=Global Shadows (For Stoned Theme Manager)
 noborderrule=2
 
 [plasmarc|Theme]
-name=cachyos-emerald
+_description=set plasma theme
+name=Iridescent-round
 
 [breezerc|Common]
+_description=configure breeze outline settings
 OutlineIntensity=OutlineOff
 
 [breezerc|Windeco Exception 0]
+_description=configure breeze window exception rules
 BorderSize=0
 Enabled=true
 ExceptionPattern=.*
 ExceptionType=0
-HideTitleBar=false
+HideTitleBar=false  # enable hide titlebars
 Mask=0
 
 [darklyrc|Common]
+_description=configure darkly common settings
 ButtonHeight=8
 CornerRadius=7
 FancyMargins=false
@@ -388,6 +549,7 @@ ShadowStrength=51
 SunkenEffect=true
 
 [darklyrc|Style]
+_description=configure darkly style settings
 DisableDolphinUrlNavigatorBackground=false
 DolphinSidebarOpacity=18
 DolphinViewOpacity=18
@@ -396,21 +558,32 @@ TabBarOpacity=18
 TabDrawHighlight=true
 
 [darklyrc|Windeco]
+_description=configure darkly window decoration settings
 RoundedCorners=false
 
 [darklyrc|Windeco Exception 0]
+_description=configure darkly window exception rules
 BorderSize=0
 Enabled=true
 ExceptionPattern=.*
 ExceptionType=0
-HideTitleBar=false
+HideTitleBar=false  # enable hide titlebars
 Mask=0
 CONFIGS
-close_group
+if [ -n "$description" ] && [ -n "$current_file" ]; then
+    add_desc "$description"
+fi
+if [ -n "$current_file" ]; then
+    finish_file "$current_file"
+fi
 
-# Install color scheme file
-sleep 0.15
-echo "Installing color scheme..."
+qdbus6 org.kde.KWin /KWin reconfigure >/dev/null 2>&1 || true
+
+checklist_mark 1
+section_header "Applying styles/colors"
+styles_summary="
+  ✓ glassd color scheme installed"
+
 mkdir -p "$HOME/.local/share/color-schemes"
 cat > "$HOME/.local/share/color-schemes/glassd.colors" <<'CSFILE'
 [ColorEffects:Disabled]
@@ -561,23 +734,65 @@ inactiveBackground=0,81,93,125
 inactiveBlend=120,120,120
 inactiveForeground=120,120,120
 CSFILE
-printf '\033[32mOK\033[0m\n'
+left_border "$NEXT_ROW"
+printf '\033[%s;2H  Setting GTK theme to We10X... ' "$NEXT_ROW"
+kwriteconfig6 --file ~/.config/gtk-3.0/settings.ini --group Settings --key gtk-theme-name "We10X-round-grey-Dark-compact" >/dev/null 2>&1
+kwriteconfig6 --file ~/.config/gtk-4.0/settings.ini --group Settings --key gtk-theme-name "We10X-round-grey-Dark-compact" >/dev/null 2>&1
+gsettings set org.gnome.desktop.interface gtk-theme "We10X-round-grey-Dark-compact" >/dev/null 2>&1
+for c in $spinner_chars; do printf '\b%s' "$c"; sleep 0.04; done
+printf '\b\033[32m✓\033[0m\n'
+NEXT_ROW=$((NEXT_ROW + 1))
+styles_summary="$styles_summary
+  ✓ GTK theme: We10X-round-grey-Dark-compact"
 
-# Apply colorscheme, plasmastyle, application style, and gtk style
-kwriteconfig6 --file ~/.config/gtk-3.0/settings.ini --group Settings --key gtk-theme-name "We10X-round-grey-Dark-compact"
-kwriteconfig6 --file ~/.config/gtk-4.0/settings.ini --group Settings --key gtk-theme-name "We10X-round-grey-Dark-compact"
-gsettings set org.gnome.desktop.interface gtk-theme "We10X-round-grey-Dark-compact"
-kwriteconfig6 --file kdeglobals --group KDE --key widgetStyle "Darkly"
-plasma-apply-desktoptheme Iridescent-round 
-plasma-apply-colorscheme glassd
+left_border "$NEXT_ROW"
+printf '\033[%s;2H  Applying Darkly application style... ' "$NEXT_ROW"
+kwriteconfig6 --file kdeglobals --group KDE --key widgetStyle "Darkly" >/dev/null 2>&1
+for c in $spinner_chars; do printf '\b%s' "$c"; sleep 0.04; done
+printf '\b\033[32m✓\033[0m\n'
+NEXT_ROW=$((NEXT_ROW + 1))
+styles_summary="$styles_summary
+  ✓ Application style: Darkly"
 
-echo
-sleep 0.2
-printf '\033[32m  All configs applied.\033[0m\n'
-echo
+left_border "$NEXT_ROW"
+printf '\033[%s;2H  Setting plasma theme... ' "$NEXT_ROW"
+plasma-apply-desktoptheme Iridescent-round >/dev/null 2>&1 &
+pid=$!
+while kill -0 $pid 2>/dev/null; do
+    for c in $spinner_chars; do
+        printf '\b%s' "$c"
+        sleep 0.04
+        kill -0 $pid 2>/dev/null || break 2
+    done
+done
+printf '\b\033[32m✓\033[0m\n'
+NEXT_ROW=$((NEXT_ROW + 1))
+styles_summary="$styles_summary
+  ✓ Plasma theme: Iridescent-round"
 
-echo "  Note: The GUI can also be run as a portable app from the project"
-echo "  directory with: python3 sttm --portable"
+left_border "$NEXT_ROW"
+printf '\033[%s;2H  Applying glassd color scheme... ' "$NEXT_ROW"
+plasma-apply-colorscheme glassd >/dev/null 2>&1 &
+pid=$!
+while kill -0 $pid 2>/dev/null; do
+    for c in $spinner_chars; do
+        printf '\b%s' "$c"
+        sleep 0.04
+        kill -0 $pid 2>/dev/null || break 2
+    done
+done
+printf '\b\033[32m✓\033[0m\n'
+NEXT_ROW=$((NEXT_ROW + 1))
+styles_summary="$styles_summary
+  ✓ Color scheme: glassd"
+
+left_border "$NEXT_ROW"
+printf '\033[%s;2H  Press any key to continue...' "$NEXT_ROW"
+read -r REPLY < /dev/tty
+NEXT_ROW=$((NEXT_ROW + 1))
+
+checklist_mark 2
+
 fetch_file() {
     dest="$1"
     url="$2"
@@ -592,26 +807,13 @@ fetch_file() {
 
 merge_script() {
     src="$1"; tgt="$2"
-
-    # Split on the "#get time" marker. Everything ABOVE it (hour settings,
-    # mode variables including any user-added custom modes) is kept verbatim
-    # from the target; everything AT or BELOW it (script logic) is replaced
-    # from source. This way custom modes can shift line numbers freely.
     ss=$(grep -n "^#get time" "$src" | head -1 | cut -d: -f1)
     tt=$(grep -n "^#get time" "$tgt" | head -1 | cut -d: -f1)
-
-    # Source malformed (no marker): refuse to merge — fall back to fresh copy.
     [ -z "$ss" ] && return 1
-
-    # Target has no marker: we can't split it safely. Back the user's file up
-    # BEFORE the fresh-copy fallback overwrites it, so no config is ever lost.
     if [ -z "$tt" ]; then
         cp -p "$tgt" "$tgt.bak.$(date +%Y%m%d%H%M%S)" 2>/dev/null || true
         return 1
     fi
-
-    # Split by explicit line numbers. (The range pattern NR,/^pat/ never
-    # terminates when the marker is absent — deliberately avoided.)
     awk -v ts="$tt" 'NR <= ts' "$tgt" > "$tgt.tmp" &&
     awk -v ss="$ss" 'NR > ss'  "$src" >> "$tgt.tmp" &&
     mv "$tgt.tmp" "$tgt"
@@ -620,7 +822,8 @@ merge_script() {
 cp_or_fetch() {
     file="$1"
     merge="${2:-no}"
-    target="$HOME/.local/bin/$file"
+    target_dir="$3"
+    target="$target_dir/$file"
     if [ -f "$SCRIPT_DIR/$file" ]; then
         if [ "$merge" = "merge" ] && [ -f "$target" ]; then
             merge_script "$SCRIPT_DIR/$file" "$target" || cp "$SCRIPT_DIR/$file" "$target"
@@ -637,20 +840,59 @@ cp_or_fetch() {
             fetch_file "$target" "$STTM_RAWBASE/$file"
         fi
     else
-        echo "  Warning: $file not found, skipping."
+        left_border "$NEXT_ROW"
+        printf '\033[%s;2H  Warning: %s not found, skipping.\n' "$NEXT_ROW" "$file"
+        NEXT_ROW=$((NEXT_ROW + 1))
         return 1
     fi
 }
 
-if prompt_yn "Install Stoned Theme Manager to ~/.local/bin?"; then
-    echo "Installing STTM GUI..."
-    mkdir -p "$HOME/.local/bin"
-    SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
-    cp_or_fetch "sttm" || true
-    cp_or_fetch "blsw" merge || true
-    chmod +x "$HOME/.local/bin/sttm" "$HOME/.local/bin/blsw" 2>/dev/null || true
+# Bottom-up wipe before install menu
+r=$((NEXT_ROW - 1))
+while [ "$r" -ge 10 ]; do
+    printf '\033[%s;2H\033[K' "$r"
+    printf '\033[%s;%sH│' "$r" "$W"
+    r=$((r - 1))
+    sleep 0.02
+done
 
-    echo "Installing icon..."
+NEXT_ROW=10
+section_header "Installing Manager"
+
+left_border "$NEXT_ROW"
+printf '\033[%s;2H  Install STTM (choose method):\n' "$NEXT_ROW"
+NEXT_ROW=$((NEXT_ROW + 1))
+left_border "$NEXT_ROW"
+printf '\033[%s;2H    1) local    - install to ~/.local/bin\n' "$NEXT_ROW"
+NEXT_ROW=$((NEXT_ROW + 1))
+left_border "$NEXT_ROW"
+printf '\033[%s;2H    2) portable - install to ~/\n' "$NEXT_ROW"
+NEXT_ROW=$((NEXT_ROW + 1))
+left_border "$NEXT_ROW"
+printf '\033[%s;2H    3) skip\n' "$NEXT_ROW"
+NEXT_ROW=$((NEXT_ROW + 1))
+left_border "$NEXT_ROW"
+printf '\033[%s;2H  Select: ' "$NEXT_ROW"
+read -r REPLY < /dev/tty
+case "$REPLY" in
+    1) install_mode=local ;;
+    2) install_mode=portable ;;
+    *) install_mode=skip ;;
+esac
+if [ "$install_mode" = local ]; then
+    INSTALL_DIR="$HOME/.local/bin"
+    left_border "$NEXT_ROW"
+    printf '\033[%s;2H  Installing STTM GUI...\n' "$NEXT_ROW"
+    NEXT_ROW=$((NEXT_ROW + 1))
+    mkdir -p "$INSTALL_DIR"
+    SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+    cp_or_fetch "sttm" "no" "$INSTALL_DIR" || true
+    cp_or_fetch "blsw" "merge" "$INSTALL_DIR" || true
+    chmod +x "$INSTALL_DIR/sttm" "$INSTALL_DIR/blsw" 2>/dev/null || true
+
+    left_border "$NEXT_ROW"
+    printf '\033[%s;2H  Installing icon...\n' "$NEXT_ROW"
+    NEXT_ROW=$((NEXT_ROW + 1))
     mkdir -p "$HOME/.local/share/icons/hicolor/256x256/apps"
     if [ -f "$SCRIPT_DIR/icon.png" ]; then
         icon_src="$SCRIPT_DIR/icon.png"
@@ -659,42 +901,99 @@ if prompt_yn "Install Stoned Theme Manager to ~/.local/bin?"; then
     fi
     if [ -n "$icon_src" ]; then
         if command -v convert >/dev/null 2>&1; then
-            convert "$icon_src" -resize 256x256 "$HOME/.local/share/icons/hicolor/256x256/apps/sttm.png"
+            convert "$icon_src" -resize 256x256 "$HOME/.local/share/icons/hicolor/256x256/apps/sttm.png" >/dev/null 2>&1
         else
-            cp "$icon_src" "$HOME/.local/share/icons/hicolor/256x256/apps/sttm.png"
+            cp "$icon_src" "$HOME/.local/share/icons/hicolor/256x256/apps/sttm.png" >/dev/null 2>&1
         fi
     else
-        echo "  Warning: icon.png not found, skipping."
+        left_border "$NEXT_ROW"
+        printf '\033[%s;2H  Warning: icon.png not found, skipping.\n' "$NEXT_ROW"
+        NEXT_ROW=$((NEXT_ROW + 1))
     fi
 
-    echo "Creating desktop entry..."
+    left_border "$NEXT_ROW"
+    printf '\033[%s;2H  Creating desktop entry...\n' "$NEXT_ROW"
+    NEXT_ROW=$((NEXT_ROW + 1))
     mkdir -p "$HOME/.local/share/applications"
     cat > "$HOME/.local/share/applications/sttm.desktop" <<DESKTOP
 [Desktop Entry]
 Name=STTM
 GenericName=Stoned Theme Manager
 Comment=KDE theme manager with wallpaper-based color generation
-Exec=$HOME/.local/bin/sttm
+Exec=$INSTALL_DIR/sttm
 Icon=sttm
 Terminal=false
 Type=Application
 Categories=Qt;KDE;System;Utility;
 DESKTOP
-    printf '\033[32mOK\033[0m\n'
-fi
+    manager_summary="
+  ✓ STTM installed to $INSTALL_DIR
+  ✓ Desktop entry created"
+elif [ "$install_mode" = portable ]; then
+    PORT_DIR="$HOME/STTM"
+    INSTALL_DIR="$PORT_DIR"
+    left_border "$NEXT_ROW"
+    printf '\033[%s;2H  Installing STTM GUI to %s...\n' "$NEXT_ROW" "$PORT_DIR"
+    NEXT_ROW=$((NEXT_ROW + 1))
+    mkdir -p "$PORT_DIR"
+    SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+    cp_or_fetch "sttm" "no" "$PORT_DIR" || true
+    cp_or_fetch "blsw" "merge" "$PORT_DIR" || true
+    chmod +x "$PORT_DIR/sttm" "$PORT_DIR/blsw" 2>/dev/null || true
 
-if prompt_yn "Restart plasmashell?"; then
-    echo "Restarting plasmashell..."
-    kquitapp6 plasmashell 2>/dev/null || true
-    sleep 1
-    kstart plasmashell >/dev/null 2>&1 || plasmashell >/dev/null 2>&1 &
-    sleep 2
-    echo "Plasmashell restarted."
+    left_border "$NEXT_ROW"
+    printf '\033[%s;2H  Installing icon...\n' "$NEXT_ROW"
+    NEXT_ROW=$((NEXT_ROW + 1))
+    if [ -f "$SCRIPT_DIR/icon.png" ]; then
+        cp "$SCRIPT_DIR/icon.png" "$PORT_DIR/sttm.png" 2>/dev/null || true
+    elif [ -n "$STTM_RAWBASE" ]; then
+        fetch_file "$PORT_DIR/sttm.png" "$STTM_RAWBASE/icon.png" || true
+    fi
+
+    left_border "$NEXT_ROW"
+    printf '\033[%s;2H  Create desktop entry? [Y/n]: ' "$NEXT_ROW"
+    read -r REPLY < /dev/tty
+    case "$REPLY" in
+        [nN]|[nN][oO]) create_desktop=false ;;
+        *) create_desktop=true ;;
+    esac
+    if $create_desktop; then
+        left_border "$NEXT_ROW"
+        printf '\033[%s;2H  Creating desktop entry...\n' "$NEXT_ROW"
+        NEXT_ROW=$((NEXT_ROW + 1))
+        mkdir -p "$HOME/.local/share/applications"
+        cat > "$HOME/.local/share/applications/sttm.desktop" <<DESKTOP
+[Desktop Entry]
+Name=STTM
+GenericName=Stoned Theme Manager
+Comment=KDE theme manager with wallpaper-based color generation
+Exec=$PORT_DIR/sttm
+Icon=$PORT_DIR/sttm.png
+Terminal=false
+Type=Application
+Categories=Qt;KDE;System;Utility;
+DESKTOP
+        manager_summary="
+  ✓ STTM installed to $PORT_DIR/
+  ✓ Desktop entry created"
+    else
+        manager_summary="
+  ✓ STTM installed to $PORT_DIR/
+  ✗ Desktop entry skipped"
+    fi
 else
-    echo "Skipping. Restart manually: kquitapp6 plasmashell && kstart plasmashell"
+    manager_summary="
+  ✗ Skipped (user declined)"
 fi
 
-echo
-echo "Install Complete. Some applications may need to be restarted for changes to fully apply"
-printf "\n%s" "Press Enter to exit."
-read -r REPLY
+checklist_mark 3
+
+printf '\033[10;1H│\033[J'
+r=11; while [ "$r" -lt "$H" ]; do
+    printf '\033[%s;1H│' "$r"
+    printf '\033[%s;%sH│' "$r" "$W"
+    r=$((r + 1))
+done
+printf '\033[%s;1H└' "$H"; c=2; while [ "$c" -lt "$W" ]; do printf '─'; c=$((c + 1)); done; printf '┘'
+NEXT_ROW=10
+show_summary

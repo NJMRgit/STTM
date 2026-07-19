@@ -142,7 +142,7 @@ check_installed() {
 check_darkly()     { kpackagetool5 --type KWin/Decoration --list -g 2>/dev/null | grep -qi "darkly"; }
 check_glass()      { [ -f "/usr/lib/qt6/plugins/kwin/effects/plugins/glass.so" ] || kpackagetool5 --type KWin/Effect --list -g 2>/dev/null | grep -qi "glass"; }
 check_rounded()    { [ -f "/usr/lib/qt6/plugins/kwin/effects/plugins/kwin4_effect_shapecorners.so" ] || kpackagetool5 --type KWin/Effect --list -g 2>/dev/null | grep -qiE "rounded|shapecorner"; }
-check_emerald()    { [ -d "$HOME/.local/share/plasma/desktoptheme/cachyos-emerald" ] || [ -d "/usr/share/plasma/desktoptheme/cachyos-emerald" ]; }
+check_iridescent() { [ -d "$HOME/.local/share/plasma/desktoptheme/Iridescent-round" ] || [ -d "/usr/share/plasma/desktoptheme/Iridescent-round" ]; }
 check_we10x()      { ls "$HOME/.themes/" 2>/dev/null | grep -qi "we10x" || ls "$HOME/.local/share/themes/" 2>/dev/null | grep -qi "we10x" || ls "/usr/share/themes/" 2>/dev/null | grep -qi "we10x"; }
 check_glassd()     { [ -f "$HOME/.local/share/color-schemes/glassd.colors" ]; }
 
@@ -307,19 +307,19 @@ elif prompt "kwin-rounded-corners" "Rounded corners KWin effect" "Build from Git
     fi
 fi
 
-# --- CachyOS-Emerald-KDE ---
-    if check_emerald; then
-    type_text "  CachyOS Emerald"; printf ' \033[32m✓\033[0m\n'
-    log_step "CachyOS Emerald already installed"
-elif prompt "cachyos-emerald" "CachyOS Emerald Plasma theme" "Install from GitHub?"; then
-    git_clone "CachyOS-Emerald-KDE" "https://github.com/CachyOS/CachyOS-Emerald-KDE.git"
-    if [ -d "$CLONE_DIR/CachyOS-Emerald-KDE/plasma" ]; then
+# --- Iridescent (Plasma desktop theme) ---
+    if check_iridescent; then
+    type_text "  Iridescent-round"; printf ' \033[32m✓\033[0m\n'
+    log_step "Iridescent already installed"
+elif prompt "iridescent" "Iridescent-round Plasma theme" "Install from GitHub?"; then
+    git_clone "Iridescent" "https://github.com/ddh4r4m/Iridescent.git"
+    if [ -d "$CLONE_DIR/Iridescent/plasma" ]; then
         plasmadir="$HOME/.local/share/plasma"
         mkdir -p "$plasmadir"
-        cp -r "$CLONE_DIR/CachyOS-Emerald-KDE/plasma"/* "$plasmadir/" 2>/dev/null
-        printf "  Installed CachyOS Emerald plasma theme."
+        cp -r "$CLONE_DIR/Iridescent/plasma"/* "$plasmadir/" 2>/dev/null
+        printf "  Installed Iridescent-round plasma theme."
         group_open=true; close_group
-        log_step "CachyOS Emerald plasma theme installed"
+        log_step "Iridescent plasma theme installed"
     fi
 fi
 
