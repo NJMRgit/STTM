@@ -61,8 +61,16 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 ### Automated Installer
 - `install` — dependency installer with distro detection (pacman/apt/dnf)
 - Handles AUR packages via detected helper (yay, paru, trizen, pikaur, pacaur)
-
 - Installs Darkly, We10X, kwin-effects-glass, KDE-Rounded-Corners, CachyOS-Emerald-KDE
+
+### First-Time Setup Utility
+-Applies various settings and effects automatically
+<video src="https://github.com/user-attachments/assets/f859f5ac-fe8a-428d-b024-746ee1547796" controls></video>
+
+
+
+
+
 
 ### KDE Plasma Integration
 - Applies settings via `kwriteconfig6`, `plasma-apply-wallpaperimage`, and `qdbus6`
