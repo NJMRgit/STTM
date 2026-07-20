@@ -186,13 +186,40 @@ $file_descs"
 show_summary() {
     DIVIDER=$((W / 2 + 1))
     [ -z "$INSTALL_DIR" ] && INSTALL_DIR="~/.local/bin"
-    left_data="  Files updated ($file_count):
+
+    if [ "$install_mode" = skip ]; then
+        left_data="  Files updated ($file_count):
+$config_summary
+  Styles/Colors applied:
+$styles_summary"
+    else
+        left_data="  Files updated ($file_count):
 $config_summary
   Styles/Colors applied:
 $styles_summary
   Manager:
 $manager_summary"
-    right_data="  Commands:
+    fi
+
+    if [ "$install_mode" = portable ]; then
+        right_data="  Commands:
+    ~/STTM/blsw morning|noon|afternoon|evening|night
+    ~/STTM/blsw auto
+    ~/STTM/blsw --fix
+  GUI:
+    ~/STTM/sttm
+    python3 ~/STTM/sttm --portable
+  Examples:
+    ~/STTM/blsw morning    Manual theme
+    ~/STTM/blsw auto       Time-based
+    ~/STTM/blsw --fix      Rebuild effects
+    ~/STTM/sttm            Launch GUI
+  File locations:
+    $INSTALL_DIR/sttm
+    $INSTALL_DIR/blsw
+    ~/.local/share/color-schemes/glassd.colors"
+    elif [ "$install_mode" = local ]; then
+        right_data="  Commands:
     blsw morning|noon|afternoon|evening|night
     blsw auto
     blsw --fix
@@ -208,31 +235,44 @@ $manager_summary"
     $INSTALL_DIR/sttm
     $INSTALL_DIR/blsw
     ~/.local/share/color-schemes/glassd.colors"
-
-    left_count=$(printf '%s\n' "$left_data" | wc -l)
-    right_count=$(printf '%s\n' "$right_data" | wc -l)
-    max_rows=$left_count
-    [ "$right_count" -gt "$max_rows" ] && max_rows=$right_count
+    fi
 
     section_header "Summary"
     start_row=$NEXT_ROW
-    end_row=$((start_row + max_rows - 1))
 
-    row=1
-    while [ "$row" -le "$max_rows" ]; do
-        r=$((start_row + row - 1))
-        left_line=$(printf '%s\n' "$left_data" | sed -n "${row}p")
-        right_line=$(printf '%s\n' "$right_data" | sed -n "${row}p")
-        left_border "$r"
-        printf '\033[%s;2H%s' "$r" "$left_line"
-        printf '\033[%s;%sH│' "$r" "$DIVIDER"
-        if [ -n "$right_line" ]; then
-            printf '\033[%s;%sH%s' "$r" "$((DIVIDER + 2))" "$right_line"
-        fi
-        row=$((row + 1))
-    done
+    if [ "$install_mode" = skip ]; then
+        while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            left_border "$NEXT_ROW"
+            printf '\033[%s;2H%s' "$NEXT_ROW" "$line"
+            NEXT_ROW=$((NEXT_ROW + 1))
+        done <<LEFTDATA
+$left_data
+LEFTDATA
+        end_row=$((NEXT_ROW - 1))
+    else
+        left_count=$(printf '%s\n' "$left_data" | wc -l)
+        right_count=$(printf '%s\n' "$right_data" | wc -l)
+        max_rows=$left_count
+        [ "$right_count" -gt "$max_rows" ] && max_rows=$right_count
 
-    NEXT_ROW=$((end_row + 1))
+        end_row=$((start_row + max_rows - 1))
+
+        row=1
+        while [ "$row" -le "$max_rows" ]; do
+            r=$((start_row + row - 1))
+            left_line=$(printf '%s\n' "$left_data" | sed -n "${row}p")
+            right_line=$(printf '%s\n' "$right_data" | sed -n "${row}p")
+            left_border "$r"
+            printf '\033[%s;2H%s' "$r" "$left_line"
+            printf '\033[%s;%sH│' "$r" "$DIVIDER"
+            if [ -n "$right_line" ]; then
+                printf '\033[%s;%sH%s' "$r" "$((DIVIDER + 2))" "$right_line"
+            fi
+            row=$((row + 1))
+        done
+        NEXT_ROW=$((end_row + 1))
+    fi
 
     # Inner separator before exit prompt
     printf '\033[%s;1H├' "$NEXT_ROW"
@@ -483,9 +523,9 @@ WindowClasses=gsr-ui\nactivate-linux
 [kwinrc|Plugins]
 _description=adjust enabled desktop effects
 blurEnabled=false
-fadeEnabled=true  
+fadeEnabled=true
 glassEnabled=true
-scaleEnabled=false  
+scaleEnabled=false
 
 [kwinrc|Round-Corners]
 _description=configure rounded corners settings
@@ -745,9 +785,11 @@ NEXT_ROW=$((NEXT_ROW + 1))
 styles_summary="$styles_summary
   ✓ GTK theme: We10X-round-grey-Dark-compact"
 
+
 left_border "$NEXT_ROW"
 printf '\033[%s;2H  Applying Darkly application style... ' "$NEXT_ROW"
 kwriteconfig6 --file kdeglobals --group KDE --key widgetStyle "Darkly" >/dev/null 2>&1
+qdbus6 org.kde.KWin /KWin org.kde.KWin.reconfigure
 for c in $spinner_chars; do printf '\b%s' "$c"; sleep 0.04; done
 printf '\b\033[32m✓\033[0m\n'
 NEXT_ROW=$((NEXT_ROW + 1))
@@ -785,6 +827,13 @@ printf '\b\033[32m✓\033[0m\n'
 NEXT_ROW=$((NEXT_ROW + 1))
 styles_summary="$styles_summary
   ✓ Color scheme: glassd"
+
+
+qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect kwin4_effect_shapecorners
+qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect glass
+qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect kwin4_effect_shapecorners >/dev/null 2>&1
+qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect glass >/dev/null 2>&1
+
 
 left_border "$NEXT_ROW"
 printf '\033[%s;2H  Press any key to continue...' "$NEXT_ROW"
@@ -967,7 +1016,7 @@ elif [ "$install_mode" = portable ]; then
 Name=STTM
 GenericName=Stoned Theme Manager
 Comment=KDE theme manager with wallpaper-based color generation
-Exec=$PORT_DIR/sttm
+Exec=$PORT_DIR/sttm --portable
 Icon=$PORT_DIR/sttm.png
 Terminal=false
 Type=Application
