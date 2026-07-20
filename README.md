@@ -66,10 +66,8 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 ### First-Time Setup Utility
 -Applies various settings and effects automatically
 <video src="https://github.com/user-attachments/assets/f859f5ac-fe8a-428d-b024-746ee1547796" controls></video>
-
-
-
-
+Result on a fresh cachyOS install:
+<img width="1901" height="1073" alt="image" src="https://github.com/user-attachments/assets/04a1c992-093d-4a31-9a39-f7584f0c22fe" />
 
 
 ### KDE Plasma Integration
