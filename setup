@@ -820,6 +820,8 @@ qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect kwin4_effect_shap
 qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect glass >/dev/null 2>&1 || true
 qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect kwin4_effect_shapecorners >/dev/null 2>&1 || true
 qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect glass >/dev/null 2>&1 || true
+kquitapp6 plasmashell
+kstart plasmashell
 
 
 left_border "$NEXT_ROW"
