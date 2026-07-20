@@ -2,15 +2,6 @@
 
 set -e
 
-prompt_yn() {
-    printf "\n%s [Y/n]: " "$1" >&2
-    read -r REPLY < /dev/tty
-    case "$REPLY" in
-        [nN]|[nN][oO]) return 1 ;;
-        *) return 0 ;;
-    esac
-}
-
 # Silent apply — no output
 apply() {
     file="$1"; group="$2"; key="$3"; value="$4"
@@ -38,9 +29,28 @@ type_text() {
     done
 }
 
-# Strip inline comment markers
+# Strip inline comment markers (whitespace must precede '#')
 clean() {
-    printf '%s\n' "$1" | sed 's/[[:space:]]*#.*//' | sed 's/[[:space:]]*$//'
+    printf '%s\n' "$1" | sed 's/[[:space:]][[:space:]]*#.*//' | sed 's/[[:space:]]*$//'
+}
+
+# Run a command in the background with a spinner; print ✓ or ✗ by result
+run_step() {
+    "$@" >/dev/null 2>&1 &
+    pid=$!
+    while kill -0 "$pid" 2>/dev/null; do
+        for c in $spinner_chars; do
+            printf '\b%s' "$c"
+            sleep 0.04
+            kill -0 "$pid" 2>/dev/null || break 2
+        done
+    done
+    if wait "$pid"; then
+        printf '\b\033[32m✓\033[0m\n'
+    else
+        printf '\b\033[31m✗\033[0m\n'
+        return 1
+    fi
 }
 
 spinner_chars="- \\ | /"
@@ -52,8 +62,6 @@ config_summary=""
 styles_summary=""
 manager_summary=""
 INSTALL_DIR=""
-W=0
-H=0
 
 enter_fullscreen() {
     W=$(tput cols 2>/dev/null || echo 80)
@@ -185,7 +193,6 @@ $file_descs"
 
 show_summary() {
     DIVIDER=$((W / 2 + 1))
-    [ -z "$INSTALL_DIR" ] && INSTALL_DIR="~/.local/bin"
 
     if [ "$install_mode" = skip ]; then
         left_data="  Files updated ($file_count):
@@ -282,16 +289,27 @@ LEFTDATA
 
     left_border "$NEXT_ROW"
     printf '\033[%s;2H  Press Enter to exit.' "$NEXT_ROW"
-    read -r REPLY
+    read -r REPLY < /dev/tty || true
     exit_fullscreen
 }
 
-cleanup() {
+restore_screen() {
     printf '\033[?25h'
     printf '\033[?1049l'
+}
+
+on_signal() {
+    restore_screen
     exit 1
 }
-trap cleanup INT TERM TSTP
+
+if ! command -v kwriteconfig6 >/dev/null 2>&1; then
+    echo "Error: kwriteconfig6 is required but was not found." >&2
+    exit 1
+fi
+
+trap on_signal INT TERM TSTP
+trap restore_screen EXIT
 
 enter_fullscreen
 
@@ -389,8 +407,6 @@ left_border 10
 printf '\033[10;2H\033[2m── Updating config files\033[0m\n'
 NEXT_ROW=11
 
-anim_apply=false
-do_anim=false
 current_file=""
 description=""
 
@@ -434,52 +450,9 @@ while IFS= read -r line || [ -n "$line" ]; do
                 continue
             fi
 
-            # --- animation prompt ---
-            if printf '%s\n' "$val" | grep -q "Prompt user for this change"; then
-                if ! $do_anim; then
-                    do_anim=true
-                    if prompt_yn "Change animations? (May prevent flicker)"; then
-                        anim_apply=true
-                        v=$(clean "$val")
-                        apply "$file" "$group" "$key" "$v"
-                    fi
-                fi
-                continue
-            fi
-
-            if printf '%s\n' "$val" | grep -q "include as part of the previous prompt"; then
-                if $anim_apply; then
-                    v=$(clean "$val")
-                    apply "$file" "$group" "$key" "$v"
-                fi
-                continue
-            fi
-
-            # --- inactive shadow alpha prompt ---
-            if printf '%s\n' "$val" | grep -q "enable inactive shadows"; then
-                printf "\n%s [y/N]: " "Enable inactive shadows? (not recommended)" >&2
-                read -r REPLY < /dev/tty
-                case "$REPLY" in
-                    [yY]|[yY][eE][sS])
-                        apply "$file" "$group" "$key" "170"
-                        ;;
-                    *)
-                        apply "$file" "$group" "$key" "0"
-                        ;;
-                esac
-                continue
-            fi
-
             # --- hide titlebars prompt ---
             if printf '%s\n' "$val" | grep -q "enable hide titlebars"; then
-                if [ -z "${hide_titlebars+x}" ]; then
-                    printf "\n%s [y/N]: " "Hide Titlebars?" >&2
-                    read -r REPLY < /dev/tty
-                    case "$REPLY" in
-                        [yY]|[yY][eE][sS]) apply "$file" "$group" "$key" "true" ;;
-                        *) apply "$file" "$group" "$key" "false" ;;
-                    esac
-                elif $hide_titlebars; then
+                if $hide_titlebars; then
                     apply "$file" "$group" "$key" "true"
                 else
                     apply "$file" "$group" "$key" "false"
@@ -499,26 +472,50 @@ done <<'CONFIGS'
 # Inline annotations are stripped.
 # ----------------------------------------------------------------
 
+[kwinrc|Effect-better-blur-dx]
+BlurDecorations=true
+BlurDocks=true
+BlurMatching=false
+BlurMenus=true
+BlurNonMatching=true
+BlurStrength=5
+CornerRadius=8
+RefractionCornerRadius=110
+RefractionEdgeSize=30
+RefractionMode=1
+RefractionNormalPow=13
+RefractionStrength=5
+WindowClasses=gsr-ui
+
 [kwinrc|Effect-blurplus]
 _description=configure glass blur effect settings
 BlurDecorations=true
+BlurFinetune=5
 BlurMatching=false
 BlurNonMatching=true
+BlurSaturationCompensation=false
 BlurStrength=6
 BottomCornerRadius=6
 Brightness=0.85
+DecorationBlurStrength=6
+DecorationNoiseStrength=3
+DockBlurStrength=3
+DockNoiseStrength=0
 EdgeLighting=true
 EdgeLightingTooltip=true
 FakeBlur=true
+FakeBlurImage=
+FakeBlurImageSourceCustom=true
+FakeBlurImageSourceDesktopWallpaper=false
 GlowColor=
 MenuCornerRadius=11.5
 NoiseStrength=3
 OklabSaturation=true
 RefractionNormalPow=22
 RefractionRGBFringing=0
-TintColor=#37199054
+TintColor=#22222222
 TopCornerRadius=6
-WindowClasses=gsr-ui\nactivate-linux
+WindowClasses=gsr-ui
 
 [kwinrc|Plugins]
 _description=adjust enabled desktop effects
@@ -776,9 +773,9 @@ inactiveForeground=120,120,120
 CSFILE
 left_border "$NEXT_ROW"
 printf '\033[%s;2H  Setting GTK theme to We10X... ' "$NEXT_ROW"
-kwriteconfig6 --file ~/.config/gtk-3.0/settings.ini --group Settings --key gtk-theme-name "We10X-round-grey-Dark-compact" >/dev/null 2>&1
-kwriteconfig6 --file ~/.config/gtk-4.0/settings.ini --group Settings --key gtk-theme-name "We10X-round-grey-Dark-compact" >/dev/null 2>&1
-gsettings set org.gnome.desktop.interface gtk-theme "We10X-round-grey-Dark-compact" >/dev/null 2>&1
+kwriteconfig6 --file ~/.config/gtk-3.0/settings.ini --group Settings --key gtk-theme-name "We10X-round-grey-Dark-compact" >/dev/null 2>&1 || true
+kwriteconfig6 --file ~/.config/gtk-4.0/settings.ini --group Settings --key gtk-theme-name "We10X-round-grey-Dark-compact" >/dev/null 2>&1 || true
+gsettings set org.gnome.desktop.interface gtk-theme "We10X-round-grey-Dark-compact" >/dev/null 2>&1 || true
 for c in $spinner_chars; do printf '\b%s' "$c"; sleep 0.04; done
 printf '\b\033[32m✓\033[0m\n'
 NEXT_ROW=$((NEXT_ROW + 1))
@@ -788,8 +785,8 @@ styles_summary="$styles_summary
 
 left_border "$NEXT_ROW"
 printf '\033[%s;2H  Applying Darkly application style... ' "$NEXT_ROW"
-kwriteconfig6 --file kdeglobals --group KDE --key widgetStyle "Darkly" >/dev/null 2>&1
-qdbus6 org.kde.KWin /KWin org.kde.KWin.reconfigure
+kwriteconfig6 --file kdeglobals --group KDE --key widgetStyle "Darkly" >/dev/null 2>&1 || true
+qdbus6 org.kde.KWin /KWin org.kde.KWin.reconfigure >/dev/null 2>&1 || true
 for c in $spinner_chars; do printf '\b%s' "$c"; sleep 0.04; done
 printf '\b\033[32m✓\033[0m\n'
 NEXT_ROW=$((NEXT_ROW + 1))
@@ -798,45 +795,35 @@ styles_summary="$styles_summary
 
 left_border "$NEXT_ROW"
 printf '\033[%s;2H  Setting plasma theme... ' "$NEXT_ROW"
-plasma-apply-desktoptheme Iridescent-round >/dev/null 2>&1 &
-pid=$!
-while kill -0 $pid 2>/dev/null; do
-    for c in $spinner_chars; do
-        printf '\b%s' "$c"
-        sleep 0.04
-        kill -0 $pid 2>/dev/null || break 2
-    done
-done
-printf '\b\033[32m✓\033[0m\n'
-NEXT_ROW=$((NEXT_ROW + 1))
-styles_summary="$styles_summary
+if run_step plasma-apply-desktoptheme Iridescent-round; then
+    styles_summary="$styles_summary
   ✓ Plasma theme: Iridescent-round"
+else
+    styles_summary="$styles_summary
+  ✗ Plasma theme: not applied"
+fi
+NEXT_ROW=$((NEXT_ROW + 1))
 
 left_border "$NEXT_ROW"
 printf '\033[%s;2H  Applying glassd color scheme... ' "$NEXT_ROW"
-plasma-apply-colorscheme glassd >/dev/null 2>&1 &
-pid=$!
-while kill -0 $pid 2>/dev/null; do
-    for c in $spinner_chars; do
-        printf '\b%s' "$c"
-        sleep 0.04
-        kill -0 $pid 2>/dev/null || break 2
-    done
-done
-printf '\b\033[32m✓\033[0m\n'
-NEXT_ROW=$((NEXT_ROW + 1))
-styles_summary="$styles_summary
+if run_step plasma-apply-colorscheme glassd; then
+    styles_summary="$styles_summary
   ✓ Color scheme: glassd"
+else
+    styles_summary="$styles_summary
+  ✗ Color scheme: not applied"
+fi
+NEXT_ROW=$((NEXT_ROW + 1))
 
 
-qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect kwin4_effect_shapecorners
-qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect glass
-qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect kwin4_effect_shapecorners >/dev/null 2>&1
-qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect glass >/dev/null 2>&1
+qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect kwin4_effect_shapecorners >/dev/null 2>&1 || true
+qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect glass >/dev/null 2>&1 || true
+qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect kwin4_effect_shapecorners >/dev/null 2>&1 || true
+qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect glass >/dev/null 2>&1 || true
 
 
 left_border "$NEXT_ROW"
-printf '\033[%s;2H  Press any key to continue...' "$NEXT_ROW"
+printf '\033[%s;2H  Press Enter to continue...' "$NEXT_ROW"
 read -r REPLY < /dev/tty
 NEXT_ROW=$((NEXT_ROW + 1))
 
@@ -928,13 +915,13 @@ case "$REPLY" in
     2) install_mode=portable ;;
     *) install_mode=skip ;;
 esac
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 if [ "$install_mode" = local ]; then
     INSTALL_DIR="$HOME/.local/bin"
     left_border "$NEXT_ROW"
     printf '\033[%s;2H  Installing STTM GUI...\n' "$NEXT_ROW"
     NEXT_ROW=$((NEXT_ROW + 1))
     mkdir -p "$INSTALL_DIR"
-    SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
     cp_or_fetch "sttm" "no" "$INSTALL_DIR" || true
     cp_or_fetch "blsw" "merge" "$INSTALL_DIR" || true
     chmod +x "$INSTALL_DIR/sttm" "$INSTALL_DIR/blsw" 2>/dev/null || true
@@ -943,6 +930,7 @@ if [ "$install_mode" = local ]; then
     printf '\033[%s;2H  Installing icon...\n' "$NEXT_ROW"
     NEXT_ROW=$((NEXT_ROW + 1))
     mkdir -p "$HOME/.local/share/icons/hicolor/256x256/apps"
+    icon_src=""
     if [ -f "$SCRIPT_DIR/icon.png" ]; then
         icon_src="$SCRIPT_DIR/icon.png"
     elif [ -n "$STTM_RAWBASE" ]; then
@@ -959,6 +947,7 @@ if [ "$install_mode" = local ]; then
         printf '\033[%s;2H  Warning: icon.png not found, skipping.\n' "$NEXT_ROW"
         NEXT_ROW=$((NEXT_ROW + 1))
     fi
+    rm -f /tmp/sttm-icon.png
 
     left_border "$NEXT_ROW"
     printf '\033[%s;2H  Creating desktop entry...\n' "$NEXT_ROW"
@@ -985,7 +974,6 @@ elif [ "$install_mode" = portable ]; then
     printf '\033[%s;2H  Installing STTM GUI to %s...\n' "$NEXT_ROW" "$PORT_DIR"
     NEXT_ROW=$((NEXT_ROW + 1))
     mkdir -p "$PORT_DIR"
-    SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
     cp_or_fetch "sttm" "no" "$PORT_DIR" || true
     cp_or_fetch "blsw" "merge" "$PORT_DIR" || true
     chmod +x "$PORT_DIR/sttm" "$PORT_DIR/blsw" 2>/dev/null || true
