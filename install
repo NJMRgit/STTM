@@ -140,7 +140,7 @@ check_installed() {
 }
 
 _kpgk()            { kpackagetool6 "$@" 2>/dev/null || kpackagetool5 "$@" 2>/dev/null; }
-check_darkly()     { _kpgk --type KWin/Decoration --list -g | grep -qi "darkly"; }
+check_darkly()     { _kpgk --type KWin/Decoration --list -g | grep -qi "darkly" || grep -qi "^widgetStyle=.*darkly" "$HOME/.config/kdeglobals" 2>/dev/null; }
 check_glass()      { [ -f "/usr/lib/qt6/plugins/kwin/effects/plugins/glass.so" ] || _kpgk --type KWin/Effect --list -g | grep -qi "glass"; }
 check_rounded()    { [ -f "/usr/lib/qt6/plugins/kwin/effects/plugins/kwin4_effect_shapecorners.so" ] || _kpgk --type KWin/Effect --list -g | grep -qiE "rounded|shapecorner"; }
 check_iridescent() { [ -d "$HOME/.local/share/plasma/desktoptheme/Iridescent-round" ] || [ -d "/usr/share/plasma/desktoptheme/Iridescent-round" ]; }
