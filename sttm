@@ -708,8 +708,9 @@ class BlurSwitchManager(QMainWindow):
                 "[Unit]\nDescription=BlurSwitch Auto Mode (Login)\nAfter=graphical-session.target"
                 + (f" openrgb.service\nRequires=openrgb.service" if has_openrgb else "") + "\n\n"
                 "[Service]\nType=oneshot\n"
+                "EnvironmentFile=%h/.blur-schedule\n"
                 + ("ExecStartPre=/bin/sh -c 'old=-1; stable=0; for i in $(seq 1 30); do count=$(/usr/bin/openrgb --list-devices 2>&1 | grep -cP \"^[0-9]+:\"); if [ \"$count\" = \"$old\" ] 2>/dev/null; then stable=$((stable + 1)); else stable=0; fi; old=$count; [ \"$stable\" -ge 3 ] && break; sleep 1; done'\n" if has_openrgb else "")
-                f"ExecStart=\"{script_escaped}\" auto\n"
+                f"ExecStart={script_escaped} ${{_MODE}}\n"
                 f"{env}"
                 "[Install]\nWantedBy=graphical-session.target"
             )
