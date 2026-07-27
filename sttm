@@ -703,8 +703,9 @@ class BlurSwitchManager(QMainWindow):
             )
             tmr = "[Unit]\nDescription=BlurSwitch Auto Mode Timer\n\n[Timer]\nOnCalendar=hourly\nPersistent=true\n\n[Install]\nWantedBy=timers.target"
             login_svc = (
-                "[Unit]\nDescription=BlurSwitch Auto Mode (Login)\nAfter=graphical-session.target\n\n"
+                "[Unit]\nDescription=BlurSwitch Auto Mode (Login)\nAfter=graphical-session.target openrgb.service\nRequires=openrgb.service\n\n"
                 "[Service]\nType=oneshot\n"
+                "ExecStartPre=/bin/sh -c 'for i in $(seq 1 20); do count=$(/usr/bin/openrgb --list-devices 2>&1 | grep -cP \"^[0-9]+:\"); [ \"$count\" -ge 4 ] && break; sleep 1; done'\n"
                 f"ExecStart=\"{script_escaped}\" auto\n"
                 f"{env}"
                 "[Install]\nWantedBy=graphical-session.target"
