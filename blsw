@@ -215,6 +215,8 @@ fi
 [ -n "$SHADOW_COLOR_INACTIVE" ] && kwriteconfig6 --file kwinrc --group "Round-Corners" --key InactiveShadowColor $SHADOW_COLOR_INACTIVE
 [ -n "$OUTLINE_COLOR_ACTIVE" ] && kwriteconfig6 --file kwinrc --group "Round-Corners" --key OutlineColor $OUTLINE_COLOR_ACTIVE
 [ -n "$OUTLINE_COLOR_INACTIVE" ] && kwriteconfig6 --file kwinrc --group "Round-Corners" --key InactiveOutlineColor $OUTLINE_COLOR_INACTIVE
+[ -n "$OUTLINE_COLOR_ACTIVE" ] && kwriteconfig6 --file kwinrc --group "Round-Corners" --key SecondOutlineColor $OUTLINE_COLOR_ACTIVE
+[ -n "$OUTLINE_COLOR_INACTIVE" ] && kwriteconfig6 --file kwinrc --group "Round-Corners" --key InactiveSecondOutlineColor $OUTLINE_COLOR_INACTIVE
 
 # change openrgb profile
 [ -n "$RGB" ] && openrgb -p "$RGB"
