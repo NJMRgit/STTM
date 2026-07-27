@@ -526,23 +526,28 @@ scaleEnabled=false
 
 [kwinrc|Round-Corners]
 _description=configure rounded corners settings
+ActiveSecondOutlineAlpha=255
 ActiveShadowAlpha=170
 ActiveShadowUseCustom=true
-DisableOutlineMaximize=false
 DisableOutlineTile=false
 DisableRoundMaximize=false
 DisableRoundTile=false
 Exclusions=gsr-ui
 InactiveCornerRadius=6
 InactiveOutlineColor=55,55,55
-InactiveOutlineThickness=4
-InactiveSecondOutlineThickness=0
+InactiveOutlineThickness=0
+InactiveSecondOutlineAlpha=255
+InactiveSecondOutlineColor=55,55,55
+InactiveSecondOutlineThickness=4
 InactiveShadowColor=55,55,55
 InactiveShadowSize=50
 InactiveShadowUseCustom=true
+Inclusions=plasmashell
 OutlineColor=55,55,55
-OutlineThickness=4
-SecondOutlineThickness=0
+OutlineThickness=0
+SecondInactiveOutlineColor=55,55,55
+SecondOutlineColor=55,55,55
+SecondOutlineThickness=4
 ShadowColor=55,55,55
 ShadowSize=50
 Size=6
@@ -820,6 +825,8 @@ qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect kwin4_effect_shap
 qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect glass >/dev/null 2>&1 || true
 qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect kwin4_effect_shapecorners >/dev/null 2>&1 || true
 qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect glass >/dev/null 2>&1 || true
+kquitapp6 plasmashell
+kstart plasmashell
 
 
 left_border "$NEXT_ROW"
