@@ -303,6 +303,60 @@ echo "_MODE=$ACTIVE_MODE" > "$HOME/.blur-schedule"
 
 echo "Applied $ACTIVE_MODE mode settings"
 
+# Update pyroclear's saved palette with the theme gradient (config only - no terminal paint).
+# The next plain `pyroclear` run burns with these colors.
+# Use `blsw <mode> --paint` to also paint the current terminal right away.
+if command -v pyroclear >/dev/null 2>&1; then
+    PYRO_HEX="${TINT#\#}"
+    PYRO_HEX="${PYRO_HEX#??}"  # TINT is #AARRGGBB -> strip alpha, keep RRGGBB
+    if [ -n "$PYRO_HEX" ] && [ "${#PYRO_HEX}" -eq 6 ]; then
+        # real gradient: darker shade of the theme color -> theme color
+        PR=$((0x${PYRO_HEX:0:2})); PG=$((0x${PYRO_HEX:2:2})); PB=$((0x${PYRO_HEX:4:2}))
+        PR=$((PR*35/100)); PG=$((PG*35/100)); PB=$((PB*35/100))
+        PYRO_FROM=$(printf '#%02X%02X%02X' "$PR" "$PG" "$PB")
+        PYRO_TO="#$PYRO_HEX"
+        python3 - "$PYRO_FROM" "$PYRO_TO" <<'PYEOF'
+import os, sys
+xdg = os.environ.get("XDG_CONFIG_HOME")
+base = os.path.join(xdg, "pyroclear") if xdg else os.path.join(os.environ.get("HOME", "/tmp"), ".config", "pyroclear")
+path = os.path.join(base, "config.toml")
+anim = {"fps": 60, "wind": 0, "height": 1, "direction": "false"}
+try:
+    for line in open(path):
+        line = line.strip()
+        if line.startswith(("[", "#")) or "=" not in line:
+            continue
+        k, _, v = line.partition("=")
+        k, v = k.strip(), v.strip().strip('"')
+        if k == "direction":
+            if v.lower() in ("true", "false"):
+                anim[k] = v.lower()
+        elif v.lstrip("-").isdigit():
+            n = int(v)
+            if k == "fps":
+                anim[k] = max(n, 1)
+            elif k == "wind":
+                anim[k] = max(-2, min(n, 2))
+            elif k == "height":
+                anim[k] = max(0, min(n, 3))
+except FileNotFoundError:
+    pass
+os.makedirs(base, exist_ok=True)
+with open(path, "w") as f:
+    f.write(f'[color]\nfrom = "{sys.argv[1].lower()}"\nto = "{sys.argv[2].lower()}"\n\n')
+    f.write("[animation]\n")
+    f.write(f"fps       = {anim['fps']}\n")
+    f.write(f"wind      = {anim['wind']}\n")
+    f.write(f"height    = {anim['height']}\n")
+    f.write(f"direction = {anim['direction']}\n")
+PYEOF
+        # opt-in: also paint the current terminal immediately
+        if [ "$2" = "--paint" ]; then
+            pyroclear --from "$PYRO_FROM" --to "$PYRO_TO"
+        fi
+    fi
+fi
+
 # Only close Yakuake session if the mode actually changed
 if [ "$MODE_CHANGED" = true ]; then
     if pstree -s $$ 2>/dev/null | grep -q yakuake; then
@@ -310,8 +364,22 @@ if [ "$MODE_CHANGED" = true ]; then
         qdbus6 org.kde.yakuake /yakuake/sessions removeSession $(qdbus6 org.kde.yakuake /yakuake/sessions activeSessionId)
     else
         echo "Mode changed, waiting for Yakuake session to be idle..."
-        YAKUAKE_PTY=$(for p in /dev/pts/*; do [ -n "$(ps -t $(basename $p) -o pid= 2>/dev/null | head -1)" ] && pstree -s $(ps -t $(basename $p) -o pid= | head -1) 2>/dev/null | grep -q yakuake && basename $p && break; done) && [ -n "$YAKUAKE_PTY" ] && while ps -t "$YAKUAKE_PTY" -o comm= 2>/dev/null | grep -v -E '^(bash|zsh|fish|sh|dash|ksh|tcsh)$' | grep -q .; do sleep 1; done; qdbus6 org.kde.yakuake /yakuake/sessions removeSession $(qdbus6 org.kde.yakuake /yakuake/sessions activeSessionId)
+        YAKUAKE_PTY=$(for p in /dev/pts/*; do [ -n "$(ps -t $(basename $p) -o pid= 2>/dev/null | head -1)" ] && pstree -s $(ps -t $(basename $p) -o pid= | head -1) 2>/dev/null | grep -q yakuake && basename $p && break; done)
+        if [ -n "$YAKUAKE_PTY" ]; then
+            # bounded wait (max 30s): a busy session (tmux, TUI, editor, ...)
+            # must not hang the script forever
+            i=0
+            while [ "$i" -lt 30 ] && ps -t "$YAKUAKE_PTY" -o comm= 2>/dev/null | grep -v -E '^(bash|zsh|fish|sh|dash|ksh|tcsh)$' | grep -q .; do
+                sleep 1
+                i=$((i+1))
+            done
+        fi
+        # only reload the session if it actually became idle - never kill a busy one
+        if [ -z "$YAKUAKE_PTY" ] || ! ps -t "$YAKUAKE_PTY" -o comm= 2>/dev/null | grep -v -E '^(bash|zsh|fish|sh|dash|ksh|tcsh)$' | grep -q .; then
+            qdbus6 org.kde.yakuake /yakuake/sessions removeSession $(qdbus6 org.kde.yakuake /yakuake/sessions activeSessionId)
+        fi
     fi
 else
     echo "Mode unchanged, skipping Yakuake session restart"
 fi
+
