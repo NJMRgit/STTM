@@ -70,7 +70,8 @@ https://github.com/user-attachments/assets/50b91f1b-fc89-40d1-a4d2-aa6a5965b761
 
 
 Result on a fresh cachyOS install:
-[Screencast_20260809_231620.webm](https://github.com/user-attachments/assets/0f9454cf-29fa-4fa6-bf92-ffc59979797c)
+<img width="1901" height="1073" alt="image" src="https://github.com/user-attachments/assets/aaf83506-c5b8-4e7b-b5d6-c953aad1e794" />
+
 
 
 
