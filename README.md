@@ -141,7 +141,23 @@ blsw --fix
   
 - To mitigate transparency issues in dolphin when renaming items disable this option
   <img width="988" height="901" alt="image" src="https://github.com/user-attachments/assets/dd227b23-fb40-4e42-9fd8-7fbd08612154" />
-             
+
+**Bonus pyroclear 
+- script updates pyroclear config to add a gradient matching the current theme
+
+[Screencast_20260809_231254.webm](https://github.com/user-attachments/assets/68707c98-d678-471b-ac54-3288af58801c)
+
+ this effect required editing my fish config and adding:
+
+ ```
+ function fish_greeting
+    if test "$TERM" = "xterm-kitty" #no fastfetch in kitty
+        clear
+    else
+      pyroclear && fastfetch --pipe false | while read -l line; echo $line; sleep 0.01; end
+    end
+end
+```
 
 ## Files
 
