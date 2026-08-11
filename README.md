@@ -148,7 +148,7 @@ blsw --fix
 - To mitigate transparency issues in dolphin when renaming items disable this option
   <img width="988" height="901" alt="image" src="https://github.com/user-attachments/assets/dd227b23-fb40-4e42-9fd8-7fbd08612154" />
 
-**Bonus pyroclear 
+**Bonus [pyroclear](https://github.com/shreyanth-sureshkrishnaa/pyroclear) 
 - script updates pyroclear config to add a gradient matching the current theme
 
 [Screencast_20260809_231254.webm](https://github.com/user-attachments/assets/68707c98-d678-471b-ac54-3288af58801c)
