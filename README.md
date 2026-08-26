@@ -86,8 +86,13 @@ Result on a fresh cachyOS install:
 ## How to install 
 
 ```bash
-curl -fsSL -o install "https://raw.githubusercontent.com/NJMRgit/STTM/main/install" && sh install
+curl -fsSL -o install "https://raw.githubusercontent.com/NJMRgit/STTM/fedora-testing/install" && sh install
 ```
+
+> This is the **fedora-testing** branch installer (Fedora package-name and
+> build-dependency fixes). Use the `main` branch command for the release install.
+> The integrity check and all file downloads come from the branch the installer
+> is published for; override with `STTM_BRANCH=main sh install` if needed.
 
 The script verifies its own integrity against the GitHub API before running.
 

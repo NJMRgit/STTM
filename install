@@ -2,7 +2,12 @@
 
 set -e
 
-RAWBASE="https://raw.githubusercontent.com/NJMRgit/STTM/main"
+# Branch this installer is published for. Raw files AND the integrity check
+# come from this branch so the README curl install works for the branch.
+# Set BRANCH back to "main" when merging to release. Override at runtime with:
+#   STTM_BRANCH=main sh install
+BRANCH="${STTM_BRANCH:-fedora-testing}"
+RAWBASE="https://raw.githubusercontent.com/NJMRgit/STTM/$BRANCH"
 INSTALL_LOG=$(mktemp /tmp/sttm-install.XXXXXX)
 
 log_step() {
@@ -22,7 +27,7 @@ fi
 
 # --- Integrity check ---
 if command -v sha256sum >/dev/null 2>&1; then
-    EXPECTED=$(curl -fsSL "https://api.github.com/repos/NJMRgit/STTM/contents/install.sha256" 2>/dev/null | grep '"content"' | sed 's/.*"content": "\(.*\)",/\1/' | awk '{gsub(/\\n/,""); print}' | base64 -d 2>/dev/null | awk '{print $1}')
+    EXPECTED=$(curl -fsSL "https://api.github.com/repos/NJMRgit/STTM/contents/install.sha256?ref=$BRANCH" 2>/dev/null | grep -o '"content"[[:space:]]*:[[:space:]]*"[^"]*"' | head -n1 | cut -d'"' -f4 | awk '{gsub(/\\n/,""); print}' | base64 -d 2>/dev/null | awk '{print $1}')
     if [ -n "$EXPECTED" ]; then
         ACTUAL=$(sha256sum "$0" | cut -d' ' -f1)
         if [ "$ACTUAL" != "$EXPECTED" ]; then
@@ -193,7 +198,11 @@ case "$PM" in
         EXTRA_APT="openrgb"
         ;;
     dnf)
-        BASE="python3-pyqt6 plasma-workspace qt6-qtbase-tools python3-pillow extra-cmake-modules $CRON_PKG"
+        # Runtime deps + devel packages needed by the source builds of Darkly,
+        # kwin-effects-glass and KDE-Rounded-Corners (verified Fedora names).
+        # NB: there is NO 'qt6-qtbase-tools' on Fedora - the Qt6 build tools
+        # (qmake6, moc, uic, rcc) are shipped in qt6-qtbase-devel.
+        BASE="python3-pyqt6 plasma-workspace qt6-qtbase-devel python3-pillow extra-cmake-modules gcc-c++ qt6-qtbase-private-devel kwin-devel kdecoration-devel libplasma-devel plasma-workspace-devel libepoxy-devel wayland-devel libdrm-devel kf6-kcmutils-devel kf6-kconfigwidgets-devel kf6-kcoreaddons-devel kf6-kcolorscheme-devel kf6-kconfig-devel kf6-kguiaddons-devel kf6-ki18n-devel kf6-kiconthemes-devel kf6-kwindowsystem-devel kf6-kirigami-devel kf6-kdeclarative-devel kf6-kglobalaccel-devel kf6-knotifications-devel kf6-kio-devel kf6-kcrash-devel kf6-frameworkintegration-devel $CRON_PKG"
         INSTALL_CMD="sudo dnf install"
         AUR_HELPER=""
         EXTRA_DNF="openrgb"
@@ -217,6 +226,25 @@ if [ -n "$MISSING" ]; then
     if prompt "The following packages need to be installed:" "$PKG_LIST"; then
         # shellcheck disable=SC2086
         run_install $INSTALL_CMD $MISSING || true
+        # dnf/apt abort the whole transaction when one package name is wrong
+        # (e.g. dnf: "No match for argument"). Re-check so a failed install is
+        # reported instead of silently continuing into builds that will fail.
+        STILL_MISSING=""
+        for pkg in $BASE; do
+            if [ -n "$pkg" ] && ! check_installed "$pkg"; then
+                STILL_MISSING="$STILL_MISSING $pkg"
+            fi
+        done
+        if [ -n "$STILL_MISSING" ]; then
+            echo
+            echo "  Warning: these packages are still missing:" >&2
+            printf '%s\n' $STILL_MISSING | sed '/^$/d; s/^/    - /' >&2
+            case "$PM" in
+                dnf) echo "  Hint: dnf installs nothing if any package name is wrong." >&2 ;;
+                apt) echo "  Hint: apt fails the whole install if any name is wrong." >&2 ;;
+            esac
+            echo "  Continuing anyway - the GUI and source-build steps may fail." >&2
+        fi
     fi
 else
     echo "  All system packages already installed."
