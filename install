@@ -4,9 +4,8 @@ set -e
 
 # Branch this installer is published for. Raw files AND the integrity check
 # come from this branch so the README curl install works for the branch.
-# Set BRANCH back to "main" when merging to release. Override at runtime with:
-#   STTM_BRANCH=main sh install
-BRANCH="${STTM_BRANCH:-fedora-testing}"
+# Override at runtime with e.g. STTM_BRANCH=fedora-testing sh install
+BRANCH="${STTM_BRANCH:-main}"
 RAWBASE="https://raw.githubusercontent.com/NJMRgit/STTM/$BRANCH"
 INSTALL_LOG=$(mktemp /tmp/sttm-install.XXXXXX)
 
