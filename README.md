@@ -81,7 +81,7 @@ Result on a fresh cachyOS install:
 ### Additional Integrations
 - **OpenRGB** — load a profile per mode
 - **Fastfetch** — per-mode logo and logo color applied to `~/.config/fastfetch/config.jsonc`
-- **Yakuake** — When updating theme to a new mode the script will check to see if yakuake is running a program. If it detects a running program it will wait till it's finished then close the yakuake session to update the fastfetch logo
+- **Yakuake** *(optional)* — when you switch to a new mode and Yakuake is running, the script checks whether a program is running in that session. If one is, it waits for it to finish (max 30 s) and then closes the Yakuake session so the new fastfetch logo is picked up. Yakuake is **not required**: if no Yakuake instance is running, this step is skipped silently and sttm behaves exactly the same.
 
 ## How to install 
 
@@ -100,6 +100,8 @@ Running the install script if program is already installed will check for any us
 - KDE Plasma 6+ (Tested working on 6.6.5 and 6.7)
 - `openrgb` (optional, for RGB lighting)
 - `systemd` or `cronie` (for auto mode scheduling)
+- Yakuake (optional — only used to reload an open Yakuake session, so the new fastfetch logo shows up there. Not needed at all if you don't run Yakuake; the script detects this by itself)
+- `psmisc` / `pstree` (optional — only used by the Yakuake integration to check whether that session is idle; when it is missing the reload is skipped instead of risking a busy session)
 
 ## Effects Used
 

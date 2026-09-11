@@ -357,29 +357,55 @@ PYEOF
     fi
 fi
 
-# Only close Yakuake session if the mode actually changed
-if [ "$MODE_CHANGED" = true ]; then
-    if pstree -s $$ 2>/dev/null | grep -q yakuake; then
-        echo "Running inside Yakuake, removing current session for reload"
-        qdbus6 org.kde.yakuake /yakuake/sessions removeSession $(qdbus6 org.kde.yakuake /yakuake/sessions activeSessionId)
+# --- Yakuake session reload (OPTIONAL) --------------------------------------
+# Yakuake is NOT required: sttm works without it. This block only exists so an
+# open Yakuake session picks up the new fastfetch logo, so it is skipped - with
+# no D-Bus call at all - unless a Yakuake instance is actually running.
+# Without this guard `qdbus6 org.kde.yakuake ...` fails on machines that do not
+# run Yakuake and the GUI reports
+#   "Script error: Service 'org.kde.yakuake' does not exist."
+# pstree (psmisc) is only needed for this integration; if it is missing we skip
+# instead of risking the close of a session that has a program running in it.
+YAKUAKE_SESSION=""
+yakuake_running() {
+    command -v qdbus6 >/dev/null 2>&1 || return 1
+    command -v pstree >/dev/null 2>&1 || return 1
+    # activeSessionId only answers while a Yakuake instance is running
+    YAKUAKE_SESSION=$(qdbus6 org.kde.yakuake /yakuake/sessions activeSessionId 2>/dev/null)
+    case "$YAKUAKE_SESSION" in
+        ''|*[!0-9]*) YAKUAKE_SESSION=""; return 1 ;;
+    esac
+    return 0
+}
+
+if yakuake_running; then
+    # Only close Yakuake session if the mode actually changed
+    if [ "$MODE_CHANGED" = true ]; then
+        if pstree -s $$ 2>/dev/null | grep -q yakuake; then
+            echo "Running inside Yakuake, removing current session for reload"
+            qdbus6 org.kde.yakuake /yakuake/sessions removeSession "$YAKUAKE_SESSION" 2>/dev/null || true
+        else
+            echo "Mode changed, waiting for Yakuake session to be idle..."
+            YAKUAKE_PTY=$(for p in /dev/pts/*; do [ -n "$(ps -t $(basename $p) -o pid= 2>/dev/null | head -1)" ] && pstree -s $(ps -t $(basename $p) -o pid= | head -1) 2>/dev/null | grep -q yakuake && basename $p && break; done)
+            if [ -n "$YAKUAKE_PTY" ]; then
+                # bounded wait (max 30s): a busy session (tmux, TUI, editor, ...)
+                # must not hang the script forever
+                i=0
+                while [ "$i" -lt 30 ] && ps -t "$YAKUAKE_PTY" -o comm= 2>/dev/null | grep -v -E '^(bash|zsh|fish|sh|dash|ksh|tcsh)$' | grep -q .; do
+                    sleep 1
+                    i=$((i+1))
+                done
+            fi
+            # only reload the session if it actually became idle - never kill a busy one
+            if [ -z "$YAKUAKE_PTY" ] || ! ps -t "$YAKUAKE_PTY" -o comm= 2>/dev/null | grep -v -E '^(bash|zsh|fish|sh|dash|ksh|tcsh)$' | grep -q .; then
+                qdbus6 org.kde.yakuake /yakuake/sessions removeSession "$YAKUAKE_SESSION" 2>/dev/null || true
+            fi
+        fi
     else
-        echo "Mode changed, waiting for Yakuake session to be idle..."
-        YAKUAKE_PTY=$(for p in /dev/pts/*; do [ -n "$(ps -t $(basename $p) -o pid= 2>/dev/null | head -1)" ] && pstree -s $(ps -t $(basename $p) -o pid= | head -1) 2>/dev/null | grep -q yakuake && basename $p && break; done)
-        if [ -n "$YAKUAKE_PTY" ]; then
-            # bounded wait (max 30s): a busy session (tmux, TUI, editor, ...)
-            # must not hang the script forever
-            i=0
-            while [ "$i" -lt 30 ] && ps -t "$YAKUAKE_PTY" -o comm= 2>/dev/null | grep -v -E '^(bash|zsh|fish|sh|dash|ksh|tcsh)$' | grep -q .; do
-                sleep 1
-                i=$((i+1))
-            done
-        fi
-        # only reload the session if it actually became idle - never kill a busy one
-        if [ -z "$YAKUAKE_PTY" ] || ! ps -t "$YAKUAKE_PTY" -o comm= 2>/dev/null | grep -v -E '^(bash|zsh|fish|sh|dash|ksh|tcsh)$' | grep -q .; then
-            qdbus6 org.kde.yakuake /yakuake/sessions removeSession $(qdbus6 org.kde.yakuake /yakuake/sessions activeSessionId)
-        fi
+        echo "Mode unchanged, skipping Yakuake session restart"
     fi
-else
-    echo "Mode unchanged, skipping Yakuake session restart"
 fi
+
+# Exit cleanly: the sttm GUI treats a non-zero exit as a script error.
+exit 0
 
