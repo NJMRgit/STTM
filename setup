@@ -224,6 +224,7 @@ $manager_summary"
   File locations:
     $INSTALL_DIR/sttm
     $INSTALL_DIR/blsw
+    $INSTALL_DIR/kb-rgb
     ~/.local/share/color-schemes/glassd.colors"
     elif [ "$install_mode" = local ]; then
         right_data="  Commands:
@@ -241,6 +242,7 @@ $manager_summary"
   File locations:
     $INSTALL_DIR/sttm
     $INSTALL_DIR/blsw
+    $INSTALL_DIR/kb-rgb
     ~/.local/share/color-schemes/glassd.colors"
     fi
 
@@ -931,7 +933,8 @@ if [ "$install_mode" = local ]; then
     mkdir -p "$INSTALL_DIR"
     cp_or_fetch "sttm" "no" "$INSTALL_DIR" || true
     cp_or_fetch "blsw" "merge" "$INSTALL_DIR" || true
-    chmod +x "$INSTALL_DIR/sttm" "$INSTALL_DIR/blsw" 2>/dev/null || true
+    cp_or_fetch "kb-rgb" "no" "$INSTALL_DIR" || true
+    chmod +x "$INSTALL_DIR/sttm" "$INSTALL_DIR/blsw" "$INSTALL_DIR/kb-rgb" 2>/dev/null || true
 
     left_border "$NEXT_ROW"
     printf '\033[%s;2H  Installing icon...\n' "$NEXT_ROW"
@@ -983,7 +986,8 @@ elif [ "$install_mode" = portable ]; then
     mkdir -p "$PORT_DIR"
     cp_or_fetch "sttm" "no" "$PORT_DIR" || true
     cp_or_fetch "blsw" "merge" "$PORT_DIR" || true
-    chmod +x "$PORT_DIR/sttm" "$PORT_DIR/blsw" 2>/dev/null || true
+    cp_or_fetch "kb-rgb" "no" "$PORT_DIR" || true
+    chmod +x "$PORT_DIR/sttm" "$PORT_DIR/blsw" "$PORT_DIR/kb-rgb" 2>/dev/null || true
 
     left_border "$NEXT_ROW"
     printf '\033[%s;2H  Installing icon...\n' "$NEXT_ROW"

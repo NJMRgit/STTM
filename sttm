@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys, re, os, subprocess, math, colorsys
+from urllib.parse import quote
 from datetime import datetime
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
@@ -15,6 +16,15 @@ else:
     CONFIG_DIR = os.path.expanduser("~/.config/sttm")
     SCHEDULE_FILE = os.path.expanduser("~/.blur-schedule")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "sttm.conf")
+
+# Keyboards the "Keyboard Color" field is known to drive, as (model, note) pairs.  Adding a
+# device here means its raw-HID colour protocol was verified working - users on other
+# keyboards are asked to open an issue so the list can grow.
+# Writes only ever work over a cable: the 2.4 GHz dongle (and bluetooth) exposes no command
+# channel, so the keyboard just keeps the colour it was last given while wireless.
+REPO_URL = "https://github.com/NJMRgit/STTM"
+SUPPORTED_KEYBOARDS = [("Keychron K2 HE", "wired USB-C only")]
+KB_ISSUE_LABEL = "keyboard-support"
 
 
 
@@ -101,12 +111,14 @@ class CenteredCombo(QComboBox):
 class BlurSwitchManager(QMainWindow):
     MODES = ["MORNING","NOON","AFTERNOON","EVENING","NIGHT"]
     HOURS = {"MORNING":6,"NOON":12,"AFTERNOON":14,"EVENING":17,"NIGHT":21}
-    MODE_VARS = ["TINT","OUTLINE_COLOR_ACTIVE","OUTLINE_COLOR_INACTIVE","SHADOW_COLOR","SHADOW_COLOR_INACTIVE","WALLPAPER","FF_LOGO","FF_LOGO_COLOR","RGB"]
+    MODE_VARS = ["TINT","OUTLINE_COLOR_ACTIVE","OUTLINE_COLOR_INACTIVE","SHADOW_COLOR","SHADOW_COLOR_INACTIVE","WALLPAPER","FF_LOGO","FF_LOGO_COLOR","RGB","KB_COLOR"]
 
     def __init__(self):
         super().__init__()
         os.makedirs(CONFIG_DIR, exist_ok=True)
         self.script = self._get_script(); self.cfg = {}; self.inp = {}; self.wp = {}
+        self._kb_rows = []
+        self.show_kb_colour = bool(QSettings("sttm","sttm").value("show_keyboard_colour", False, type=bool))
         self.auto = False; self.current = None; self.custom = []; self.stack = None; self.settings = {}; self._auto_proc = None; self._apply_proc = None; self._gen_proc = None; self._watch_timer = None
         self.setWindowTitle("Stoned Theme Manager"); self.setWindowIcon(QIcon(os.path.join(SCRIPT_DIR, "icon.png"))); self.resize(800, 1080); self.setMinimumSize(800,700)
         self.setFont(QFont()); self._load(); self._detect_custom(); self._ui(); self._restore_geometry(); self._detect_scheduler(); self._timer_status(); self._detect_mode()
@@ -389,6 +401,29 @@ class BlurSwitchManager(QMainWindow):
         s = QFrame(); s.setFrameShape(QFrame.Shape.HLine); s.setFrameShadow(QFrame.Shadow.Sunken)
         s.setStyleSheet("QFrame { color: rgba(128,128,128,0.5); margin: 10px 0; }"); return s
 
+    def _open_kb_issue(self, kind="request"):
+        title = ("Keyboard works - please add it to the supported list: <MODEL>"
+                 if kind == "works" else "Keyboard support request: <MODEL>")
+        body = ("Keyboard model:\n"
+                "USB IDs (lsusb, prefer the wired entry):\n"
+                "Connection used (USB-C cable is required for writes):\n"
+                "Does the Keychron Launcher web config work on this keyboard?\n"
+                "What did you try (steps / commands / output):\n\n"
+                "--- context ---\n"
+                "sttm: keyboard colour field\n")
+        url = f"{REPO_URL}/issues/new?labels={KB_ISSUE_LABEL}&title={quote(title)}&body={quote(body)}"
+        QDesktopServices.openUrl(QUrl(url))
+
+    def _set_show_kb_colour(self, on):
+        self.show_kb_colour = bool(on)
+        QSettings("sttm", "sttm").setValue("show_keyboard_colour", self.show_kb_colour)
+        self._apply_kb_visibility()
+
+    def _apply_kb_visibility(self):
+        for label, edit, btn in getattr(self, "_kb_rows", []):
+            for w in (label, edit, btn):
+                w.setVisible(self.show_kb_colour)
+
     def _color_row(self, form, key, label, hex=False):
         row = QHBoxLayout(); e = QLineEdit(self.cfg.get(key,"")); self.inp[key] = e; row.addWidget(e)
         b = QPushButton(); b.setFixedSize(30,30)
@@ -498,6 +533,7 @@ class BlurSwitchManager(QMainWindow):
 {name}_FF_LOGO=
 {name}_FF_LOGO_COLOR=
 {name}_RGB=
+{name}_KB_COLOR=
 #-------------------------------------------------------------------------------------------------#"""
             insert_point = content.find("#get time")
             if insert_point == -1: insert_point = content.find("h=$(date +%H)")
@@ -588,6 +624,18 @@ class BlurSwitchManager(QMainWindow):
         fg.setLayout(ff); form_layout.addWidget(fg); form_layout.addWidget(self._separator())
         sg = QGroupBox("System"); sf = QFormLayout(); sr = QHBoxLayout()
         re = QLineEdit(self.cfg.get(f"{mode}_RGB","")); self.inp[f"{mode}_RGB"] = re; sr.addWidget(re); sf.addRow("OpenRGB Profile:", sr)
+        kb_label = QLabel("Keyboard Color:"); kb_row = QHBoxLayout()
+        kb_e = QLineEdit(self.cfg.get(f"{mode}_KB_COLOR","")); self.inp[f"{mode}_KB_COLOR"] = kb_e
+        kb_e.setPlaceholderText("#RRGGBB, or tint / logo / live")
+        kb_e.setToolTip("Keyboard colour for this mode.\n#RRGGBB sets it explicitly;\ntint / logo / live follow the mode accent or the live OpenRGB colour;\nempty leaves it to the theme default.\n\nWired USB-C only: the 2.4 GHz dongle cannot be commanded, the keyboard\njust keeps the last colour it was given while wireless.")
+        kb_row.addWidget(kb_e)
+        kb_b = QPushButton(); kb_b.setFixedSize(30,30)
+        kb_b.setIcon(self._icon(kb_e.text())); kb_b.setIconSize(QSize(20,20))
+        kb_b.setToolTip("Pick keyboard colour")
+        kb_e.textChanged.connect(lambda t: kb_b.setIcon(self._icon(t)))
+        kb_b.clicked.connect(lambda: self._pick_hex(kb_e, kb_b)); kb_row.addWidget(kb_b)
+        sf.addRow(kb_label, kb_row)
+        self._kb_rows.append((kb_label, kb_e, kb_b))
         sg.setLayout(sf); form_layout.addWidget(sg); form_layout.addStretch()
         scroll.setWidget(form)
         left_layout.addWidget(scroll, 1)
@@ -624,6 +672,42 @@ class BlurSwitchManager(QMainWindow):
 
     def _ui(self):
         c = QWidget(); self.setCentralWidget(c); l = QVBoxLayout(c)
+        top = QHBoxLayout()
+        top.addStretch(1)
+        self.menu_btn = QToolButton(); self.menu_btn.setText("\u22ee")
+        self.menu_btn.setToolTip("Settings")
+        self.menu_btn.setFixedSize(30, 30)
+        self.menu_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        menu = QMenu(self.menu_btn)
+        self.kb_act = QAction("Show keyboard colour field", self); self.kb_act.setCheckable(True)
+        self.kb_act.setChecked(self.show_kb_colour)
+        self.kb_act.toggled.connect(self._set_show_kb_colour)
+        menu.addAction(self.kb_act)
+        menu.addSeparator()
+        head = QAction("Keyboard colour - supported devices:", self); head.setEnabled(False)
+        head.setToolTip("Writes go over the USB-C cable only - the 2.4 GHz dongle and bluetooth expose no command channel.")
+        menu.addAction(head)
+        for dev, note in SUPPORTED_KEYBOARDS:
+            a = QAction(f"    {dev} ({note})", self); a.setEnabled(False)
+            a.setToolTip("Verified working. Plug the keyboard in with its USB-C cable to change the colour; "
+                         "while wireless it keeps the last colour written.")
+            menu.addAction(a)
+        note = QAction("    (nothing else confirmed yet)", self); note.setEnabled(False)
+        menu.addAction(note)
+        wired = QAction("    cable required - wireless keeps last colour", self); wired.setEnabled(False)
+        wired.setToolTip("The keyboard stores the colour in its firmware, so a wireless connection still shows it.")
+        menu.addAction(wired)
+        add_act = QAction("It works on my keyboard - add it to the list", self)
+        add_act.setToolTip("Opens a GitHub issue asking for your model to be added to SUPPORTED_KEYBOARDS")
+        add_act.triggered.connect(lambda: self._open_kb_issue("works"))
+        req_act = QAction("Request support for my keyboard", self)
+        req_act.setToolTip("Opens a GitHub issue to request support for a keyboard that does not work yet")
+        req_act.triggered.connect(lambda: self._open_kb_issue("request"))
+        menu.addSeparator(); menu.addAction(add_act); menu.addAction(req_act)
+        self.menu_btn.setMenu(menu)
+        top.addWidget(self.menu_btn)
+        l.addLayout(top)
+
         tg = QGroupBox("Time Schedule (24-Hour Format)"); tl = QHBoxLayout()
         for mode in self.MODES:
             vb = QVBoxLayout(); lb = QLabel(f"{mode.title()}:"); lb.setAlignment(Qt.AlignmentFlag.AlignCenter); vb.addWidget(lb)
@@ -669,6 +753,7 @@ class BlurSwitchManager(QMainWindow):
         self.save_btn = QPushButton("Save Settings"); self.save_btn.clicked.connect(self._save)
         self.auto_btn = QPushButton("Auto Mode (Disabled)"); self.auto_btn.clicked.connect(self._toggle_auto)
         bl.addWidget(self.save_btn); bl.addWidget(self.auto_btn); l.addLayout(bl)
+        self._apply_kb_visibility()
 
     def _on_combo_changed(self, i):
         if i < 0: return

@@ -1,0 +1,541 @@
+#!/usr/bin/env python3
+"""kb-rgb - set the keyboard RGB colour for the current sttm/blsw mode.
+
+Ships with STTM (https://github.com/NJMRgit/STTM).  Supported keyboards: Keychron K2 HE.
+Verified working on that model; if it works on yours, open an issue to have it added to the
+supported list, otherwise open an issue to request support.
+
+WIRED USB-C ONLY: the 2.4 GHz dongle (and bluetooth) exposes no command channel, so writes
+only succeed while the cable is attached.  The keyboard stores the colour in its firmware,
+so it keeps showing it while used wirelessly.
+
+Colour source (in order of preference):
+  1. --rgb / --hsv override (calibration)
+  2. an explicit profile name argument   -> /etc/openrgb/profiles/<name>.json
+  3. the LIVE colour of the OpenRGB server (SDK, 127.0.0.1:6742)  <- default
+  4. the openrgb profile named in ~/.blur-schedule (blsw state)
+
+Talks the Keychron "KC_RGB" raw-HID protocol (command 0xA8) directly, so it needs
+neither the Keychron Launcher web app nor OpenRGB device support.
+
+* Reachable only over the USB-C cable: the 2.4 GHz dongle exposes the raw-HID
+  descriptor but never answers commands.  Without the cable the script exits
+  quietly (status 0).
+* The colour is written into the keyboard's own memory (SaveLedConf), so it stays
+  applied while the keyboard is used wirelessly.
+* Nothing is written when the keyboard already shows the wanted colour, to avoid
+  needless flash writes.
+
+Usage:
+    kb-rgb                         # theme colour of the current sttm/blsw mode
+    kb-rgb --mode monster          # theme colour of a named mode
+    kb-rgb --theme tint|outline|logo|live
+                                   # which mode colour to use (default: logo accent;
+                                   #   live = colour the OpenRGB server is showing)
+    kb-rgb space                   # colour from /etc/openrgb/profiles/space.json
+    kb-rgb -v                      # verbose
+    kb-rgb --rgb 2B5273    # explicit colour
+    kb-rgb --hsv 147,160,115
+    kb-rgb --value 200     # override the HSV value byte (brightness calibration)
+    kb-rgb --sat 200       # override the HSV saturation byte
+"""
+import glob
+import json
+import os
+import re
+import select
+import socket
+import struct
+import subprocess
+import sys
+import time
+
+KC_RGB = 0xA8
+SUB_VERSION = 0x01
+SUB_SAVE = 0x02
+SUB_LED_COUNT = 0x05
+SUB_GET_LED_COLOR = 0x09
+SUB_SET_LED_COLOR = 0x0A
+
+BATCH = 9              # 4 header bytes + 3*9 = 31 bytes, fits one 32-byte report
+VENDOR_ID = "3434"     # Keychron
+DEFAULT_LEDS = 84
+
+SDK_MAGIC = b"ORGB"
+SDK_PORT = 6742
+
+VERBOSE = "-v" in sys.argv or "--verbose" in sys.argv
+
+
+def log(msg):
+    if VERBOSE:
+        print(msg, file=sys.stderr)
+
+
+# ------------------------------------------------------- OpenRGB SDK (live colour)
+
+def _recv_exact(sock, n):
+    buf = b""
+    while len(buf) < n:
+        chunk = sock.recv(n - len(buf))
+        if not chunk:
+            raise EOFError("connection closed")
+        buf += chunk
+    return buf
+
+
+def _sdk_packet(sock):
+    hdr = _recv_exact(sock, 16)
+    dev, pkt, size = struct.unpack("<III", hdr[4:])
+    return dev, pkt, (_recv_exact(sock, size) if size else b"")
+
+
+def _sdk_devices(host="127.0.0.1", port=SDK_PORT):
+    sock = socket.create_connection((host, port), timeout=4)
+    try:
+        sock.sendall(SDK_MAGIC + struct.pack("<III", 0, 0, 0))     # controller count
+        _, _, payload = _sdk_packet(sock)
+        count = struct.unpack("<I", payload)[0]
+        blobs = []
+        for dev in range(count):
+            sock.sendall(SDK_MAGIC + struct.pack("<III", dev, 1, 0))  # controller data
+            blob, i = b"", 0
+            while i < 40:
+                try:
+                    d, pkt, payload = _sdk_packet(sock)
+                except (socket.timeout, EOFError):
+                    break
+                if pkt != 1 or d != dev:
+                    break
+                blob += payload
+                i += 1
+            blobs.append(blob)
+        return blobs
+    finally:
+        sock.close()
+
+
+def _blob_name_and_description(blob):
+    i = 8                                  # u32 total size + u32 reserved
+    out = []
+    for _ in range(2):
+        ln = struct.unpack_from("<H", blob, i)[0]
+        out.append(blob[i + 2:i + 2 + ln].rstrip(b"\x00").decode("utf-8", "replace"))
+        i += 2 + ln
+    return out[0], out[1]
+
+
+def _blob_colors(blob):
+    """Colour table sits at the end: uint16 count, then count * uint32 0x00RRGGBB."""
+    total = len(blob)
+    for k in range(1, 600):
+        pos = total - 4 * k - 2
+        if pos < 8:
+            break
+        if struct.unpack_from("<H", blob, pos)[0] == k:
+            colors = [struct.unpack_from("<I", blob, pos + 2 + 4 * j)[0] for j in range(k)]
+            if all(c <= 0xFFFFFF for c in colors):
+                return colors
+    return None
+
+
+def live_colour():
+    """Base colour the OpenRGB server is currently showing (Aura mainboard first)."""
+    try:
+        devices = _sdk_devices()
+    except (OSError, EOFError, struct.error, ValueError) as exc:
+        log("OpenRGB SDK unavailable: %s" % exc)
+        return None
+    candidates = _sdk_candidates(devices)
+    if not any("Aura" in c[0] for c in candidates):
+        try:
+            candidates = _sdk_candidates(_sdk_devices()) or candidates
+        except (OSError, EOFError, struct.error, ValueError):
+            pass
+    if not candidates:
+        return None
+    chosen = next((c for c in candidates if "Aura" in c[0]), candidates[0])
+    desc, name, colors = chosen
+    base = max(set(colors), key=colors.count)      # most common colour across LEDs
+    log("live colour from %s (%s): #%06X of %d LEDs" % (desc, name, base, len(colors)))
+    return ((base >> 16) & 0xFF, (base >> 8) & 0xFF, base & 0xFF)
+
+
+def _sdk_candidates(devices):
+    candidates = []
+    for blob in devices:
+        try:
+            name, desc = _blob_name_and_description(blob)
+        except (struct.error, IndexError):
+            continue
+        colors = _blob_colors(blob)
+        if not colors:
+            continue
+        if "LampArray" in desc:            # mouse lamp arrays, not what we mirror
+            continue
+        candidates.append((desc, name, colors))
+    return candidates
+
+
+# ---------------------------------------------------------------- HID plumbing
+
+def _usb_attr(hidraw_device_path, attr):
+    p = os.path.dirname(hidraw_device_path)
+    while p != "/" and not os.path.exists(os.path.join(p, "idVendor")):
+        p = os.path.dirname(p)
+    try:
+        with open(os.path.join(p, attr)) as fh:
+            return fh.read().strip()
+    except OSError:
+        return None
+
+
+def find_keychron_raw_hid():
+    """Return /dev/hidrawN for the wired keyboard's 0xFF60 raw-HID interface."""
+    candidates = []
+    for h in sorted(glob.glob("/sys/class/hidraw/hidraw*")):
+        dev = os.path.realpath(os.path.join(h, "device"))
+        try:
+            with open(os.path.join(dev, "report_descriptor"), "rb") as fh:
+                desc = fh.read()
+        except OSError:
+            continue
+        if b"\x06\x60\xff" not in desc:          # usage page 0xFF60
+            continue
+        if _usb_attr(dev, "idVendor") != VENDOR_ID:
+            continue
+        candidates.append(("/dev/" + os.path.basename(h), _usb_attr(dev, "idProduct")))
+    for node, pid in candidates:                  # skip the 2.4 GHz dongle (d030)
+        if pid != "d030":
+            return node
+    return candidates[0][0] if candidates else None
+
+
+class RawHid:
+    def __init__(self, node):
+        self.node = node
+
+    def command(self, payload, timeout=0.6):
+        fd = os.open(self.node, os.O_RDWR | os.O_NONBLOCK)
+        try:
+            t0 = time.time()                      # drain stale reports
+            while time.time() - t0 < 0.05:
+                r, _, _ = select.select([fd], [], [], 0.01)
+                if r:
+                    os.read(fd, 32)
+            os.write(fd, (bytes(payload) + bytes(32))[:32])
+            t0 = time.time()
+            while time.time() - t0 < timeout:
+                r, _, _ = select.select([fd], [], [], 0.05)
+                if r:
+                    return os.read(fd, 32)
+            return None
+        except OSError as exc:
+            log("hid error: %s" % exc)
+            return None
+        finally:
+            os.close(fd)
+
+    def responds(self):
+        for attempt in range(3):                 # firmware can miss one poll
+            r = self.command([KC_RGB, SUB_LED_COUNT])
+            if r and r[0] == KC_RGB and r[1] == SUB_LED_COUNT:
+                return True
+            time.sleep(0.2 + 0.2 * attempt)
+        return False
+
+    def led_count(self):
+        r = self.command([KC_RGB, SUB_LED_COUNT])
+        if r and r[0] == KC_RGB and r[1] == SUB_LED_COUNT and r[3]:
+            return r[3]
+        return DEFAULT_LEDS
+
+    def get_led_color(self, index):
+        r = self.command([KC_RGB, SUB_GET_LED_COLOR, index, 0x01])
+        if r and r[0] == KC_RGB and r[1] == SUB_GET_LED_COLOR:
+            return list(r[3:6])
+        return None
+
+    def set_led_colors(self, start, colors):
+        payload = [KC_RGB, SUB_SET_LED_COLOR, start, len(colors)]
+        for c in colors:
+            payload.extend(c)
+        r = self.command(payload)
+        return bool(r) and r[0] == KC_RGB and r[1] == SUB_SET_LED_COLOR
+
+    def save(self):
+        r = self.command([KC_RGB, SUB_SAVE])
+        return bool(r) and r[0] == KC_RGB and r[1] == SUB_SAVE
+
+
+# ------------------------------------------------------------- colour helpers
+
+def rgb_to_hsv_bytes(r, g, b):
+    rf, gf, bf = r / 255.0, g / 255.0, b / 255.0
+    mx, mn = max(rf, gf, bf), min(rf, gf, bf)
+    d = mx - mn
+    if d == 0:
+        h = 0.0
+    elif mx == rf:
+        h = ((gf - bf) / d) % 6
+    elif mx == gf:
+        h = (bf - rf) / d + 2
+    else:
+        h = (rf - gf) / d + 4
+    h = (h * 60) % 360
+    s = 0.0 if mx == 0 else d / mx
+    return [int(round(h / 360.0 * 255)), int(round(s * 255)), int(round(mx * 255))]
+
+
+def profile_paths(name):
+    home = os.path.expanduser("~")
+    for base in ("/etc/openrgb/profiles", os.path.join(home, ".config/OpenRGB/profiles")):
+        for cand in (name, name.lower(), name.capitalize(), name.upper()):
+            p = os.path.join(base, cand + ".json")
+            if os.path.isfile(p):
+                yield p
+
+
+def profile_base_rgb(name):
+    for path in profile_paths(name):
+        try:
+            with open(path) as fh:
+                data = json.load(fh)
+        except (OSError, ValueError) as exc:
+            log("cannot read %s: %s" % (path, exc))
+            continue
+        ctrls = data.get("controllers") or []
+        chosen = None
+        for c in ctrls:                                   # prefer the mainboard
+            label = "%s %s" % (c.get("description", ""), c.get("name", ""))
+            if "Aura" in label:
+                chosen = c
+                break
+        if chosen is None:
+            for c in ctrls:
+                if c.get("colors"):
+                    chosen = c
+                    break
+        if chosen and chosen.get("colors"):
+            v = int(chosen["colors"][0])
+            log("profile file %s" % path)
+            return ((v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF)
+    return None
+
+
+THEME_FIELDS = {"tint": "TINT", "outline": "OUTLINE_COLOR_ACTIVE",
+                "logo": "FF_LOGO_COLOR", "kb": "KB_COLOR"}
+
+
+def blsw_path():
+    """The deployed sttm/blsw theme definition."""
+    for p in (os.path.expanduser("~/.local/bin/blsw"),
+              os.path.expanduser("~/Projects/STTM/blsw")):
+        if os.path.isfile(p):
+            return p
+    return None
+
+
+def theme_colour(mode, src="tint"):
+    """Accent colour of a sttm/blsw mode: its TINT (== outline) or fastfetch logo colour."""
+    path = blsw_path()
+    if not path or not mode:
+        return None
+    var = "%s_%s" % (mode.upper(), THEME_FIELDS.get(src, "TINT"))
+    try:
+        with open(path) as fh:
+            text = fh.read()
+    except OSError:
+        return None
+    if THEME_FIELDS.get(src, "TINT") == "OUTLINE_COLOR_ACTIVE" or "COLOR" not in var:
+        m = re.search(r'^%s="\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*"' % var, text, re.M)
+        if m:
+            log("theme colour %s from %s (%s)" % (var, path, src))
+            return tuple(int(x) for x in m.groups())
+    m = re.search(r'^%s="#([0-9a-fA-F]{6,8})"' % var, text, re.M)
+    if m:
+        hexv = m.group(1)[-6:]
+        log("theme colour %s = #%s from %s" % (var, hexv, path))
+        return tuple(int(hexv[i:i + 2], 16) for i in (0, 2, 4))
+    log("no theme colour %s in %s" % (var, path))
+    return None
+
+
+def mode_override(mode):
+    """Per-mode override from ~/.config/kb-rgb.conf: MODE=logo|tint|outline|live|#RRGGBB"""
+    if not mode:
+        return None
+    path = os.path.expanduser("~/.config/kb-rgb.conf")
+    try:
+        with open(path) as fh:
+            text = fh.read()
+    except OSError:
+        return None
+    for raw in text.splitlines():
+        line = raw.split(";")[0].strip()
+        if "=" not in line:
+            continue
+        key, val = line.split("=", 1)
+        if key.strip().upper() == mode.upper():
+            return val.strip()
+    return None
+
+
+def state_mode():
+    """Current sttm/blsw mode as recorded in ~/.blur-schedule."""
+    state = os.path.join(os.path.expanduser("~"), ".blur-schedule")
+    try:
+        with open(state) as fh:
+            m = re.search(r"^_MODE=(\S+)$", fh.read(), re.M)
+        if m and m.group(1) not in ("auto", "--list"):
+            return m.group(1)
+    except OSError:
+        pass
+    return None
+
+
+def state_profile():
+    """Profile name recorded by blsw in ~/.blur-schedule."""
+    state = os.path.join(os.path.expanduser("~"), ".blur-schedule")
+    try:
+        with open(state) as fh:
+            m = re.search(r"^_MODE=(\S+)$", fh.read(), re.M)
+        if m and m.group(1) not in ("auto", "--list"):
+            return m.group(1)
+    except OSError:
+        pass
+    return None
+
+
+# ------------------------------------------------------------------- main
+
+def parse_overrides(argv):
+    """Returns (rgb, hsv, vforce, sforce, mode, theme_src, positional)."""
+    rgb, hsv, vforce, sforce = None, None, None, None
+    mode, theme_src, positional = None, "logo", []
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a == "--rgb" and i + 1 < len(argv):
+            h = argv[i + 1].strip().lstrip("#")
+            if len(h) == 6 and all(ch in "0123456789abcdefABCDEF" for ch in h):
+                rgb = (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+            else:                                  # symbolic: tint / outline / logo / live
+                theme_src = argv[i + 1].strip()
+            i += 2; continue
+        if a == "--hsv" and i + 1 < len(argv):
+            hsv = [int(x) for x in argv[i + 1].split(",")][:3]; i += 2; continue
+        if a == "--value" and i + 1 < len(argv):
+            vforce = int(argv[i + 1]); i += 2; continue
+        if a == "--sat" and i + 1 < len(argv):
+            sforce = int(argv[i + 1]); i += 2; continue
+        if a == "--mode" and i + 1 < len(argv):
+            mode = argv[i + 1]; i += 2; continue
+        if a in ("--theme", "--accent") and i + 1 < len(argv):
+            theme_src = argv[i + 1]; i += 2; continue
+        if a == "--live":
+            theme_src = "live"; i += 1; continue
+        if not a.startswith("-"):
+            positional.append(a)
+        i += 1
+    return rgb, hsv, vforce, sforce, mode, theme_src, positional
+
+
+def main():
+    argv = sys.argv[1:]
+    rgb_forced, hsv_forced, vforce, sforce, mode_arg, theme_src, positional = parse_overrides(argv)
+    name = positional[0] if positional else None
+    mode = mode_arg or state_mode()
+
+    if rgb_forced is not None:
+        rgb, label = rgb_forced, "#%02X%02X%02X (--rgb)" % rgb_forced
+    elif hsv_forced is not None:
+        rgb, label = None, "--hsv %s" % hsv_forced
+    else:
+        rgb = None
+        override = mode_override(mode)
+        if override and rgb is None:
+            o = override.lstrip("#")
+            if len(o) == 6 and all(ch in "0123456789abcdefABCDEF" for ch in o):
+                rgb = (int(o[0:2], 16), int(o[2:4], 16), int(o[4:6], 16))
+                label = "#%02X%02X%02X (kb-rgb.conf %s)" % (rgb[0], rgb[1], rgb[2], mode)
+            else:
+                theme_src = override
+        if rgb is None and mode:                   # explicit per-mode keyboard colour (sttm)
+            rgb = theme_colour(mode, "kb")
+            if rgb is not None:
+                label = "#%02X%02X%02X (sttm %s_KB_COLOR)" % (rgb[0], rgb[1], rgb[2], mode.upper())
+        if name:                                   # explicit profile name wins
+            rgb = profile_base_rgb(name)
+            if rgb is not None:
+                label = "#%02X%02X%02X (profile %s)" % (rgb[0], rgb[1], rgb[2], name)
+        if rgb is None and theme_src != "live" and mode:
+            rgb = theme_colour(mode, theme_src)     # sttm/blsw theme accent of the mode
+            if rgb is not None:
+                label = "#%02X%02X%02X (theme %s/%s)" % (rgb[0], rgb[1], rgb[2], mode, theme_src)
+        if rgb is None:                            # what the OpenRGB server shows now
+            rgb = live_colour()
+            if rgb is not None:
+                label = "#%02X%02X%02X (live OpenRGB)" % rgb
+        if rgb is None:
+            sp = state_profile()
+            rgb = profile_base_rgb(sp) if sp else None
+            if rgb is None:
+                log("no colour source available")
+                return 0
+            label = "#%02X%02X%02X (blsw profile %s)" % (rgb[0], rgb[1], rgb[2], sp)
+
+    if hsv_forced is not None:
+        hsv = list(hsv_forced)
+    else:
+        hsv = rgb_to_hsv_bytes(*rgb)
+    if sforce is not None:
+        hsv[1] = sforce
+    if vforce is not None:
+        hsv[2] = vforce
+
+    node = find_keychron_raw_hid()
+    if node is None:
+        log("no wired Keychron raw-HID interface (keyboard unplugged or on dongle)")
+        return 0
+
+    dev = RawHid(node)
+    if not dev.responds():
+        log("%s does not answer KC_RGB (dongle or unsupported device)" % node)
+        return 0
+
+    count = dev.led_count()
+    log("device %s: %d LEDs, %s -> hsv%s" % (node, count, label, hsv))
+
+    def matches():
+        return dev.get_led_color(0) == hsv and dev.get_led_color(count - 1) == hsv
+
+    if matches():
+        log("keyboard already matches, nothing written")
+        return 0
+
+    for start in range(0, count, BATCH):
+        chunk = min(BATCH, count - start)
+        ok_batch = dev.set_led_colors(start, [hsv] * chunk)
+        if not ok_batch:                         # one retry: the link can stall briefly
+            time.sleep(0.3)
+            ok_batch = dev.set_led_colors(start, [hsv] * chunk)
+        if not ok_batch:
+            log("failed to set LEDs %d..%d" % (start, start + chunk - 1))
+            return 1
+    if not dev.save():
+        log("failed to save")
+        return 1
+
+    ok = matches()
+    for _ in range(4):                       # read-back can lag one cycle
+        if ok:
+            break
+        time.sleep(0.2)
+        ok = matches()
+    log("written and verified" if ok else "written, verification mismatch")
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

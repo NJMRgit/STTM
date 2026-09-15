@@ -28,6 +28,7 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 - **Shadow Colors** — rounded-corners shadow (active + inactive)
 - **Fastfetch Logo** — Fastfetch logo file and logo color (Currently Ascii only)
 - **OpenRGB Profile** — set RGB lighting profile on per-theme basis (**Requires active OpenRGB daemon)
+- **Keyboard Color** — per-theme colour for the keyboard, grouped with the other system settings. Hidden by default: enable it from the **⋮ settings menu** in the top-right corner. Accepts `#RRGGBB`, or `tint` / `logo` / `live` to follow the mode accent, the fastfetch accent, or the live OpenRGB colour; empty keeps the theme default. Supported keyboards: **Keychron K2 HE** — writes go over the USB-C cable only (the 2.4 GHz dongle has no command channel). If it works on your keyboard, open an issue to have your model added to the supported list; if it does not work, open an issue to request support.
 
 
 ### Automatic Color Generation
@@ -80,6 +81,7 @@ Result on a fresh cachyOS install:
 
 ### Additional Integrations
 - **OpenRGB** — load a profile per mode
+- **Keyboard Color** *(optional)* — per-mode keyboard colour stored as `<MODE>_KB_COLOR` in `blsw` and applied by the bundled **`kb-rgb`** helper, which `setup` installs next to `sttm` and `blsw`. `kb-rgb` talks to supported keyboards directly over raw HID and stores the colour in the keyboard, so it survives wireless use. Writes need the **USB-C cable** (the 2.4 GHz dongle and bluetooth expose no command channel). Without the helper the variable is simply written and ignored.
 - **Fastfetch** — per-mode logo and logo color applied to `~/.config/fastfetch/config.jsonc`
 - **Yakuake** *(optional)* — when you switch to a new mode and Yakuake is running, the script checks whether a program is running in that session. If one is, it waits for it to finish (max 30 s) and then closes the Yakuake session so the new fastfetch logo is picked up. Yakuake is **not required**: if no Yakuake instance is running, this step is skipped silently and sttm behaves exactly the same.
 
@@ -173,6 +175,7 @@ end
 |---|---|
 | `sttm` | PyQt6 GUI application |
 | `blsw` | Backend shell script that applies mode settings |
+| `kb-rgb` | Keyboard colour helper — talks to supported keyboards over raw HID (**wired USB-C only**) |
 | `sttm.conf` | Config file (stores path to `blsw`) |
 | `install` | Automated dependency installer with distro detection |
 | `setup` | First-time KDE theme setup with interactive prompts |

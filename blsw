@@ -31,6 +31,7 @@ MORNING_WALLPAPER=
 MORNING_FF_LOGO=
 MORNING_FF_LOGO_COLOR=
 MORNING_RGB=
+MORNING_KB_COLOR=
 #-------------------------------------------------------------------------------------------------#
 #-------------------------------------------------------------------------------------------------#
 # noon mode settings
@@ -43,6 +44,7 @@ NOON_WALLPAPER=
 NOON_FF_LOGO=
 NOON_FF_LOGO_COLOR=
 NOON_RGB=
+NOON_KB_COLOR=
 #-------------------------------------------------------------------------------------------------#
 #-------------------------------------------------------------------------------------------------#
 # afternoon mode settings
@@ -55,6 +57,7 @@ AFTERNOON_WALLPAPER=
 AFTERNOON_FF_LOGO=
 AFTERNOON_FF_LOGO_COLOR=
 AFTERNOON_RGB=
+AFTERNOON_KB_COLOR=
 #-------------------------------------------------------------------------------------------------#
 #-------------------------------------------------------------------------------------------------#
 # evening mode settings
@@ -67,6 +70,7 @@ EVENING_WALLPAPER=
 EVENING_FF_LOGO=
 EVENING_FF_LOGO_COLOR=
 EVENING_RGB=
+EVENING_KB_COLOR=
 #-------------------------------------------------------------------------------------------------#
 #-------------------------------------------------------------------------------------------------#
 # night mode settings
@@ -79,6 +83,7 @@ NIGHT_WALLPAPER=
 NIGHT_FF_LOGO=
 NIGHT_FF_LOGO_COLOR=
 NIGHT_RGB=
+NIGHT_KB_COLOR=
 #-------------------------------------------------------------------------------------------------#
 
 #get time
@@ -196,14 +201,14 @@ fi
 # read active mode values; empty vars are left unapplied so prior/manual values persist
 MODE_UPPER=$(echo "$ACTIVE_MODE" | tr '[:lower:]' '[:upper:]')
 
-for var in TINT OUTLINE_COLOR_ACTIVE OUTLINE_COLOR_INACTIVE SHADOW_COLOR SHADOW_COLOR_INACTIVE WALLPAPER FF_LOGO FF_LOGO_COLOR RGB; do
+for var in TINT OUTLINE_COLOR_ACTIVE OUTLINE_COLOR_INACTIVE SHADOW_COLOR SHADOW_COLOR_INACTIVE WALLPAPER FF_LOGO FF_LOGO_COLOR RGB KB_COLOR; do
     eval "$var=\"\${${MODE_UPPER}_$var}\""
 done
 
 # nothing to change if all key vars are empty for this mode
 if [ -z "$TINT" ] && [ -z "$OUTLINE_COLOR_ACTIVE" ] && [ -z "$OUTLINE_COLOR_INACTIVE" ] && \
    [ -z "$SHADOW_COLOR" ] && [ -z "$SHADOW_COLOR_INACTIVE" ] && \
-   [ -z "$WALLPAPER" ] && [ -z "$FF_LOGO" ] && [ -z "$FF_LOGO_COLOR" ] && [ -z "$RGB" ]; then
+   [ -z "$WALLPAPER" ] && [ -z "$FF_LOGO" ] && [ -z "$FF_LOGO_COLOR" ] && [ -z "$RGB" ] && [ -z "$KB_COLOR" ]; then
     exit 0
 fi
 
@@ -220,6 +225,9 @@ fi
 
 # change openrgb profile
 [ -n "$RGB" ] && openrgb -p "$RGB"
+
+# keyboard colour (optional) - applies $KB_COLOR to supported keyboards via the kb-rgb helper
+[ -n "$KB_COLOR" ] && command -v kb-rgb >/dev/null 2>&1 && kb-rgb --rgb "$KB_COLOR"
 
 # apply wallpaper & fastfetch logo
 [ -n "$WALLPAPER" ] && plasma-apply-wallpaperimage "$WALLPAPER"
