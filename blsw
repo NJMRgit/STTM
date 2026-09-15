@@ -351,8 +351,11 @@ fi
 # change openrgb profile
 [ -n "$RGB" ] && openrgb -p "$RGB"
 
-# keyboard colour (optional) - applies $KB_COLOR to supported keyboards via the kb-rgb helper
-[ -n "$KB_COLOR" ] && command -v kb-rgb >/dev/null 2>&1 && kb-rgb --rgb "$KB_COLOR"
+# keyboard colour (optional) - applies $KB_COLOR to supported keyboards via the kb-rgb helper.
+# --mode is passed as well: with a symbolic $KB_COLOR (tint/logo/live) kb-rgb needs the
+# mode explicitly, because ~/.blur-schedule still holds the PREVIOUS mode this early in
+# the run (it is written at the end) and kb-rgb would otherwise pick that mode's colour.
+[ -n "$KB_COLOR" ] && command -v kb-rgb >/dev/null 2>&1 && kb-rgb --mode "$ACTIVE_MODE" --rgb "$KB_COLOR"
 
 # apply wallpaper & fastfetch logo
 [ -n "$WALLPAPER" ] && plasma-apply-wallpaperimage "$WALLPAPER"
