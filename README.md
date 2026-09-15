@@ -28,6 +28,7 @@ KDE Plasma theme manager with time-based mode switching. Automatically adjusts w
 - **Shadow Colors** — rounded-corners shadow (active + inactive)
 - **Fastfetch Logo** — Fastfetch logo file and logo color (Currently Ascii only)
 - **OpenRGB Profile** — set RGB lighting profile on per-theme basis (**Requires active OpenRGB daemon)
+### New Feature!
 - **Keyboard Color** — per-theme colour for the keyboard, grouped with the other system settings. Hidden by default: enable it from the **⋮ settings menu** in the top-right corner. Accepts `#RRGGBB`, or `tint` / `logo` / `live` to follow the mode accent, the fastfetch accent, or the live OpenRGB colour; empty keeps the theme default. Supported keyboards: **Keychron K2 HE** — writes go over the USB-C cable only (the 2.4 GHz dongle has no command channel). If it works on your keyboard, open an issue to have your model added to the supported list; if it does not work, open an issue to request support.
 
 
