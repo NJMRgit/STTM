@@ -84,7 +84,7 @@ Result on a fresh cachyOS install:
 - **OpenRGB** — load a profile per mode
 - **Keyboard Color** *(optional)* — per-mode keyboard colour stored as `<MODE>_KB_COLOR` in `blsw` and applied by the bundled **`kb-rgb`** helper, which `setup` installs next to `sttm` and `blsw`. `kb-rgb` talks to supported keyboards directly over raw HID and stores the colour in the keyboard, so it survives wireless use. Writes need the **USB-C cable** (the 2.4 GHz dongle and bluetooth expose no command channel). Without the helper the variable is simply written and ignored.
 - **Fastfetch** — per-mode logo and logo color applied to `~/.config/fastfetch/config.jsonc`
-- **Yakuake** *(optional)* — when you switch to a new mode and Yakuake is running, the script checks whether a program is running in that session. If one is, it waits for it to finish (max 30 s) and then closes the Yakuake session so the new fastfetch logo is picked up. Yakuake is **not required**: if no Yakuake instance is running, this step is skipped silently and sttm behaves exactly the same.
+- **Yakuake** *(optional)* — when you switch to a new mode and Yakuake is running, the script does **not** wait: it hands the wait to a small detached watcher (own session, log and pidfile in `$XDG_RUNTIME_DIR/blsw/`) that checks the session once a second and closes it as soon as the program running in it has exited, so the new fastfetch logo shows up there. The command that changed the theme returns immediately. Switching to another mode replaces the pending watcher, so only the newest theme is reloaded. Yakuake is **not required**: if no Yakuake instance is running, this step is skipped silently and sttm behaves exactly the same.
 
 ## How to install 
 
@@ -104,7 +104,7 @@ Running the install script if program is already installed will check for any us
 - `openrgb` (optional, for RGB lighting)
 - `systemd` or `cronie` (for auto mode scheduling)
 - Yakuake (optional — only used to reload an open Yakuake session, so the new fastfetch logo shows up there. Not needed at all if you don't run Yakuake; the script detects this by itself)
-- `psmisc` / `pstree` (optional — only used by the Yakuake integration to check whether that session is idle; when it is missing the reload is skipped instead of risking a busy session)
+- `psmisc` / `pstree` (optional — only used by the Yakuake integration to poll whether that session is idle; when it is missing the reload is skipped instead of risking a busy session. `BLSW_YAKUAKE_POLL` (seconds, default 1) and `BLSW_YAKUAKE_MAX_WAIT` (seconds, default 0 = wait until idle) tune the watcher, `BLSW_STATE_DIR` moves its log and pidfile)
 
 ## Effects Used
 

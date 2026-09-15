@@ -90,6 +90,18 @@ NIGHT_KB_COLOR=
 h=$(date +%H)
 
 [ -z "$HOME" ] && HOME=/tmp/
+# runtime state for the deferred Yakuake reload watcher (pidfile + log).
+# This sits below "#get time" on purpose: the installer's merge keeps an existing
+# config header and replaces everything under "#get time", so a definition in the
+# header would never reach an upgraded install.
+# XDG_RUNTIME_DIR is wiped at logout, so a stale pidfile cannot survive a reboot.
+# BLSW_STATE_DIR may be preset (tests, alternate profiles); the value is exported
+# so the detached watcher resolves the same pidfile and log.
+BLSW_STATE_DIR="${BLSW_STATE_DIR:-${XDG_RUNTIME_DIR:-/tmp}/blsw}"
+export BLSW_STATE_DIR
+BLSW_WATCH_PIDFILE="$BLSW_STATE_DIR/yakuake-watch.pid"
+BLSW_WATCH_LOG="$BLSW_STATE_DIR/yakuake-watch.log"
+
 
 # fix mode - rebuild and reload effects
 if [ "$1" = "--fix" ]; then
@@ -101,6 +113,119 @@ if [ "$1" = "--fix" ]; then
     qdbus6 --literal org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect glass
     qdbus6 --literal org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect kwin4_effect_shapecorners
     qdbus6 --literal org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect kwin4_effect_shapecorners
+    exit 0
+fi
+
+# --- Yakuake reload watcher (hidden mode) ------------------------------------
+# `blsw --yakuake-watch <session-id> [mode]` is the detached worker started at
+# the end of a themed run (see the Yakuake block near the bottom). It waits for
+# the Yakuake session to become idle and then reloads it, but it does the
+# waiting in its own session, so the command that changed the theme (and the
+# sttm GUI that may have started it) returns immediately.
+# It re-executes this very file, which keeps blsw one portable script: there is
+# no helper file to install next to it.
+if [ "$1" = "--yakuake-watch" ]; then
+    WATCH_SESSION="$2"
+    WATCH_MODE="$3"
+    # token of the run that started us. A later theme change kills this watcher
+    # and overwrites the token; if the kill raced the spawn, the token check in
+    # the loop retires us instead.
+    WATCH_TOKEN="$4"
+    WATCH_POLL="${BLSW_YAKUAKE_POLL:-1}"      # seconds between idle checks
+    WATCH_MAX="${BLSW_YAKUAKE_MAX_WAIT:-0}"   # seconds; 0 = wait until idle
+    WATCH_GRACE=5                             # polls before a failed scan counts
+
+    wlog() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+
+    case "$WATCH_SESSION" in
+        ''|*[!0-9]*) wlog "no Yakuake session id given, exiting"; exit 1 ;;
+    esac
+    [ -n "$WATCH_TOKEN" ] || WATCH_TOKEN="standalone-$$"
+
+    mkdir -p "$BLSW_STATE_DIR" 2>/dev/null || exit 1
+    # pidfile line 1 = token of the newest theme change, line 2 = our pid
+    watch_file_token() { sed -n '1p' "$BLSW_WATCH_PIDFILE" 2>/dev/null; }
+    watch_superseded() {
+        t=$(watch_file_token)
+        [ -n "$t" ] && [ "$t" != "$WATCH_TOKEN" ]
+    }
+    if watch_superseded; then
+        wlog "superseded before start, exiting"
+        exit 0
+    fi
+    printf '%s\n%s\n' "$WATCH_TOKEN" "$$" > "$BLSW_WATCH_PIDFILE"
+
+    # is the session we were started for still there? (exit instead of removing
+    # a session id that was closed by hand and could be reused)
+    # sessionIdList is a single QString ("1", "1, 2", ...): keep every number,
+    # whatever the separator, so a session count change cannot break the match
+    watch_session_exists() {
+        qdbus6 org.kde.yakuake /yakuake/sessions sessionIdList 2>/dev/null \
+            | tr -cs '0-9' '\n' | grep -qx "$WATCH_SESSION"
+    }
+
+    # the /dev/pts of the Yakuake terminal (Yakuake exposes no pid or tty over
+    # D-Bus, so walk the process trees and take the first pts owned by Yakuake)
+    watch_find_pty() {
+        for p in /dev/pts/*; do
+            [ -e "$p" ] || continue
+            pid=$(ps -t "${p##*/}" -o pid= 2>/dev/null | head -1)
+            [ -n "$pid" ] || continue
+            if pstree -s "$pid" 2>/dev/null | grep -q yakuake; then
+                printf '%s\n' "${p##*/}"
+                return 0
+            fi
+        done
+        return 1
+    }
+
+    # a plain login shell means the session is sitting at a prompt
+    watch_pty_busy() {
+        ps -t "$1" -o comm= 2>/dev/null \
+            | grep -v -E '^(bash|zsh|fish|sh|dash|ksh|tcsh)$' | grep -q .
+    }
+
+    watch_reload() {
+        wlog "reloading Yakuake session $WATCH_SESSION${WATCH_MODE:+ (mode $WATCH_MODE)}: $1"
+        qdbus6 org.kde.yakuake /yakuake/sessions removeSession "$WATCH_SESSION" 2>/dev/null || true
+    }
+
+    wlog "watching Yakuake session $WATCH_SESSION${WATCH_MODE:+ (mode $WATCH_MODE)} for idle"
+    WATCH_STARTED=$(date +%s)
+    WATCH_MISSES=0
+    while :; do
+        if watch_superseded; then
+            wlog "replaced by a newer theme change; exiting without reloading"
+            break
+        fi
+        if ! watch_session_exists; then
+            wlog "session $WATCH_SESSION is gone (Yakuake closed?); nothing to reload"
+            break
+        fi
+        if WATCH_PTY=$(watch_find_pty); then
+            WATCH_MISSES=0
+            if ! watch_pty_busy "$WATCH_PTY"; then
+                watch_reload "session idle on /dev/pts/$WATCH_PTY"
+                break
+            fi
+        else
+            # cannot see a Yakuake tty: a glitch must not cost a busy session,
+            # so only act once the scan has failed repeatedly
+            WATCH_MISSES=$((WATCH_MISSES + 1))
+            if [ "$WATCH_MISSES" -ge "$WATCH_GRACE" ]; then
+                watch_reload "no Yakuake tty found"
+                break
+            fi
+        fi
+        if [ "$WATCH_MAX" -gt 0 ] 2>/dev/null && \
+           [ $(( $(date +%s) - WATCH_STARTED )) -ge "$WATCH_MAX" ]; then
+            wlog "session $WATCH_SESSION still busy after ${WATCH_MAX}s; leaving it alone"
+            break
+        fi
+        sleep "$WATCH_POLL"
+    done
+    # only drop the pidfile while it is still ours (a replacement owns it now)
+    [ "$(watch_file_token)" = "$WATCH_TOKEN" ] && rm -f "$BLSW_WATCH_PIDFILE"
     exit 0
 fi
 
@@ -374,6 +499,12 @@ fi
 #   "Script error: Service 'org.kde.yakuake' does not exist."
 # pstree (psmisc) is only needed for this integration; if it is missing we skip
 # instead of risking the close of a session that has a program running in it.
+#
+# The idle wait itself is NOT done here any more: it runs in the detached
+# watcher (`blsw --yakuake-watch <id>`, defined near the top of this file), so a
+# theme change returns at once instead of holding the calling terminal for up
+# to 30s. A second theme change replaces the pending watcher - the watcher is
+# started per run and stop_watcher kills the previous one first.
 YAKUAKE_SESSION=""
 yakuake_running() {
     command -v qdbus6 >/dev/null 2>&1 || return 1
@@ -386,6 +517,57 @@ yakuake_running() {
     return 0
 }
 
+# absolute path of this script, so a detached watcher can re-exec it
+blsw_script_path() {
+    case "$0" in
+        /*) printf '%s\n' "$0" ;;
+        */*) printf '%s/%s\n' "$(cd "$(dirname "$0")" 2>/dev/null && pwd)" "$(basename "$0")" ;;
+        *) command -v -- "$0" 2>/dev/null || printf '%s\n' "$0" ;;
+    esac
+}
+
+# pid of a live watcher, or non-zero. pids get recycled, so the pidfile only
+# counts while /proc/<pid>/cmdline still says --yakuake-watch.
+# pidfile: line 1 = token of the newest theme change, line 2 = watcher pid.
+blsw_watcher_pid() {
+    pid=$(sed -n '2p' "$BLSW_WATCH_PIDFILE" 2>/dev/null)
+    case "$pid" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+    [ -d "/proc/$pid" ] || return 1
+    tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -q -- '--yakuake-watch' || return 1
+    printf '%s\n' "$pid"
+}
+
+# retire the watcher left over from an earlier theme change
+blsw_stop_watcher() {
+    pid=$(blsw_watcher_pid)
+    if [ -n "$pid" ]; then
+        kill "$pid" 2>/dev/null
+        i=0
+        while [ "$i" -lt 10 ] && [ -d "/proc/$pid" ]; do
+            sleep 0.1
+            i=$((i+1))
+        done
+        [ -d "/proc/$pid" ] && kill -9 "$pid" 2>/dev/null
+    fi
+    return 0
+}
+
+# start the detached watcher: new session (setsid), no controlling tty, stdio
+# to the log, so closing the terminal cannot take it down. The pidfile is
+# claimed with a fresh token before the spawn, so a watcher we failed to kill
+# sees the new token and retires itself.
+blsw_start_watcher() {   # $1 = session id
+    BLSW_SELF=$(blsw_script_path)
+    [ -n "$BLSW_SELF" ] || return 1
+    mkdir -p "$BLSW_STATE_DIR" 2>/dev/null || return 1
+    BLSW_TOKEN="$$-$(date +%s%N)"
+    printf '%s\n\n' "$BLSW_TOKEN" > "$BLSW_WATCH_PIDFILE" 2>/dev/null || return 1
+    setsid "$BLSW_SELF" --yakuake-watch "$1" "$ACTIVE_MODE" "$BLSW_TOKEN" </dev/null >>"$BLSW_WATCH_LOG" 2>&1 &
+    return 0
+}
+
 if yakuake_running; then
     # Only close Yakuake session if the mode actually changed
     if [ "$MODE_CHANGED" = true ]; then
@@ -393,24 +575,20 @@ if yakuake_running; then
             echo "Running inside Yakuake, removing current session for reload"
             qdbus6 org.kde.yakuake /yakuake/sessions removeSession "$YAKUAKE_SESSION" 2>/dev/null || true
         else
-            echo "Mode changed, waiting for Yakuake session to be idle..."
-            YAKUAKE_PTY=$(for p in /dev/pts/*; do [ -n "$(ps -t $(basename $p) -o pid= 2>/dev/null | head -1)" ] && pstree -s $(ps -t $(basename $p) -o pid= | head -1) 2>/dev/null | grep -q yakuake && basename $p && break; done)
-            if [ -n "$YAKUAKE_PTY" ]; then
-                # bounded wait (max 30s): a busy session (tmux, TUI, editor, ...)
-                # must not hang the script forever
-                i=0
-                while [ "$i" -lt 30 ] && ps -t "$YAKUAKE_PTY" -o comm= 2>/dev/null | grep -v -E '^(bash|zsh|fish|sh|dash|ksh|tcsh)$' | grep -q .; do
-                    sleep 1
-                    i=$((i+1))
-                done
-            fi
-            # only reload the session if it actually became idle - never kill a busy one
-            if [ -z "$YAKUAKE_PTY" ] || ! ps -t "$YAKUAKE_PTY" -o comm= 2>/dev/null | grep -v -E '^(bash|zsh|fish|sh|dash|ksh|tcsh)$' | grep -q .; then
-                qdbus6 org.kde.yakuake /yakuake/sessions removeSession "$YAKUAKE_SESSION" 2>/dev/null || true
+            # deferred: the watcher waits for idle in the background
+            blsw_stop_watcher
+            if blsw_start_watcher "$YAKUAKE_SESSION"; then
+                echo "Mode changed, Yakuake session will be reloaded when idle (log: $BLSW_WATCH_LOG)"
+            else
+                echo "Mode changed, but the Yakuake reload watcher could not be started"
             fi
         fi
     else
-        echo "Mode unchanged, skipping Yakuake session restart"
+        if blsw_watcher_pid >/dev/null 2>&1; then
+            echo "Mode unchanged, keeping the pending Yakuake reload watcher"
+        else
+            echo "Mode unchanged, skipping Yakuake session restart"
+        fi
     fi
 fi
 
