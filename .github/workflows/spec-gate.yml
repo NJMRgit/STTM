@@ -1,0 +1,30 @@
+# The shared dev-standard gate: tests must pass, and (once design documents
+# exist) a behaviour change must carry its spec. See ~/Projects/dev-standard.
+name: Spec gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  spec-gate:
+    runs-on: ubuntu-latest
+    container: ubuntu-latest
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: NJMRgit/dev-standard
+          path: tools/dev-standard
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Spec/code coherence + tests
+        run: |
+          python3 tools/dev-standard/bin/spec-gate check \
+            --project "STTM" \
+            --range "origin/${{ github.base_ref || 'HEAD' }}..HEAD"

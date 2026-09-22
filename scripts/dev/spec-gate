@@ -1,0 +1,7 @@
+#!/bin/sh
+# The shared dev-standard gate (see ~/Projects/dev-standard).
+#   scripts/dev/spec-gate [--no-tests] [--range A..B] [--json]
+# Blocks when the test command fails, when a design document is malformed, or
+# when a behaviour source changes without its spec. The only override is a
+# `Spec-Override: <reason>` trailer on a commit in the range.
+exec python3 "$HOME/Projects/dev-standard/bin/spec-gate" check --project STTM "$@"
