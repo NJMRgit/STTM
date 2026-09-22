@@ -9,9 +9,6 @@ on:
 jobs:
   spec-gate:
     runs-on: ubuntu-latest
-    container: ubuntu-latest
-    env:
-      DEBIAN_FRONTEND: noninteractive
     steps:
       - uses: actions/checkout@v4
         with:
