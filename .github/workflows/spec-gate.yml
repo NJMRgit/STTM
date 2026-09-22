@@ -26,4 +26,4 @@ jobs:
         run: |
           python3 tools/dev-standard/bin/spec-gate check \
             --project "STTM" \
-            --range "origin/${{ github.base_ref || 'HEAD' }}..HEAD"
+            --range "origin/${{ github.base_ref || github.event.repository.default_branch }}..HEAD"
