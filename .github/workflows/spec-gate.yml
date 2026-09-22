@@ -23,6 +23,8 @@ jobs:
         with:
           python-version: "3.12"
       - name: Spec/code coherence + tests
+        env:
+          SPEC_GATE_REPO: ${{ github.workspace }}
         run: |
           python3 tools/dev-standard/bin/spec-gate check \
             --project "STTM" \
