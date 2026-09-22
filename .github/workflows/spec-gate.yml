@@ -20,8 +20,8 @@ jobs:
         with:
           repository: NJMRgit/dev-standard
           path: tools/dev-standard
-          # dev-standard is private: a token with read access, kept as this secret.
-          token: ${{ secrets.DEV_STANDARD_TOKEN }}
+          # dev-standard is private: a read-only deploy key, kept as this secret.
+          ssh-key: ${{ secrets.DEV_STANDARD_DEPLOY_KEY }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
